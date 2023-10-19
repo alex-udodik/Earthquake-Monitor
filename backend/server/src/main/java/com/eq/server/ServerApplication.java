@@ -1,6 +1,7 @@
 package com.eq.server;
 
-
+import com.eq.database.mongodb.MongoDBConnection;
+import com.mongodb.client.MongoClient;
 import org.quartz.*;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,6 +16,7 @@ public class ServerApplication {
 	public static void main(String[] args) throws SchedulerException, javax.websocket.DeploymentException, URISyntaxException, IOException {
 		SpringApplication.run(ServerApplication.class, args);
 
+		MongoClient mongodb = MongoDBConnection.getInstance();
 	}
 
 

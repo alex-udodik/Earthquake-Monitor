@@ -1,5 +1,4 @@
 console.log("Running code in client.js");
-console.log("Hello");
 
 var socket = new SockJS('/ws');
 var stompClient = Stomp.over(socket);
@@ -24,6 +23,6 @@ var sock = new SockJS('https://www.seismicportal.eu/standing_order');
 
 function sendMessage(data) {
 
-	console.log('Sending data over to server via /app/chat');
+	console.log('Sending data over to server via /server/live');
     stompClient.send("/server/live", {}, data);
 }
