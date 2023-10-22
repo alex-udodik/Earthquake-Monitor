@@ -5,6 +5,7 @@ import com.eq.database.mongodb.MongoUtil;
 import com.eq.enums.Constants;
 import com.eq.serialized.earthquake.Earthquake;
 import com.eq.serialized.earthquake.Util;
+import com.eq.util.DataReserve;
 import com.google.gson.Gson;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -42,6 +43,19 @@ public class WebSocketController {
                 document,
                 earthquakeEvent.getData().getId());
 
+        DataReserve.DoublyLinkedList.getInstance().printList();
+        System.out.println(" === === ===");
+        int index = DataReserve.DoublyLinkedList.getInstance().find(earthquakeEvent.getData().getId());
+        if (index != -1) {
+            DataReserve.DoublyLinkedList.getInstance().replace(index, earthquakeEvent);
+            System.out.println("Found a copy: Replacing node in linkedlist.");
+        }
+        else {
+            DataReserve.DoublyLinkedList.getInstance().addToFront(earthquakeEvent);
+            System.out.println("Found no copy. Just adding to linkedlist");
+        }
+
+        DataReserve.DoublyLinkedList.getInstance().printList();
         String response = "Request data received: " + earthquakeEvent.getAction();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
