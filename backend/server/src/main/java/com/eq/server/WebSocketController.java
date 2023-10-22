@@ -44,7 +44,6 @@ public class WebSocketController {
                 earthquakeEvent.getData().getId());
 
         DataReserve.DoublyLinkedList.getInstance().printList();
-        System.out.println(" === === ===");
         int index = DataReserve.DoublyLinkedList.getInstance().find(earthquakeEvent.getData().getId());
         if (index != -1) {
             DataReserve.DoublyLinkedList.getInstance().replace(index, earthquakeEvent);
@@ -55,7 +54,6 @@ public class WebSocketController {
             System.out.println("Found no copy. Just adding to linkedlist");
         }
 
-        DataReserve.DoublyLinkedList.getInstance().printList();
         String response = "Request data received: " + earthquakeEvent.getAction();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
