@@ -32,6 +32,7 @@ public class WebSocketController {
         System.out.println(earthquakeEvent.getData().getProperties().getFlynn_region());
         System.out.println("Magnitude: " + earthquakeEvent.getData().getProperties().getMag());
         System.out.println("Time: " + earthquakeEvent.getData().getProperties().getTime());
+        System.out.println();
 
         String json = Util.ConvertToJSON(earthquakeEvent);
         Document document = Document.parse(json);
