@@ -50,14 +50,19 @@ public class DataReserve {
                     Node temp = head;
                     head = newNode;
                     head.next = temp;
+                    temp.prev = head;
                 }
                 size++;
             } else {
+                // Remove the old tail
                 tail = tail.prev;
                 tail.next = null;
+
+                // Add the new node to the front
                 Node temp = head;
                 head = newNode;
                 head.next = temp;
+                temp.prev = head;
             }
         }
 

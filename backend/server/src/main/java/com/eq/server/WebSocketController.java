@@ -1,21 +1,14 @@
 package com.eq.server;
 
-import com.eq.database.mongodb.MongoDBConnection;
 import com.eq.database.mongodb.MongoUtil;
 import com.eq.enums.Constants;
 import com.eq.serialized.earthquake.Earthquake;
 import com.eq.serialized.earthquake.Util;
 import com.eq.util.DataReserve;
-import com.google.gson.Gson;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
