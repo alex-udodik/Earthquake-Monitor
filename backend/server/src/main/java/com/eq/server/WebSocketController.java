@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/server/live")
 public class WebSocketController {
 
-    @PostMapping("/receive")
+    @PostMapping("/send")
     public ResponseEntity<String> insertIntoMongoDB(@RequestBody Earthquake earthquakeEvent) throws Exception {
 
         System.out.println("Incoming Earthquake event to /server/live/receive");
