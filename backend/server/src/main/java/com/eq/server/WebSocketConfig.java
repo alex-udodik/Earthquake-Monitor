@@ -5,19 +5,21 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.*;
 
 @Configuration
-@EnableWebSocket
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws").withSockJS();
+    public void configureMessageBroker(MessageBrokerRegistry config) {
+        config.enableSimpleBroker("/topic");
+        config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/receive");
-        registry.setApplicationDestinationPrefixes("/server");
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.addEndpoint("/topic").withSockJS();
+        registry.addEndpoint("/topic").setAllowedOrigins("*");;
 
     }
+
+
 }

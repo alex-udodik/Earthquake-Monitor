@@ -4,19 +4,26 @@ import com.eq.database.mongodb.MongoUtil;
 import com.eq.enums.Constants;
 import com.eq.serialized.earthquake.Earthquake;
 import com.eq.serialized.earthquake.Util;
+import com.eq.server.controllers.FlutterWebSocketController;
 import com.eq.util.DataReserve;
 import org.bson.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/server/live")
+@RequestMapping("/app/live")
 public class WebSocketController {
+
+    @Autowired
+    private SimpMessagingTemplate template;
 
     @PostMapping("/send")
     public ResponseEntity<String> insertIntoMongoDB(@RequestBody Earthquake earthquakeEvent) throws Exception {
@@ -47,6 +54,7 @@ public class WebSocketController {
             System.out.println("Found no copy. Just adding to linkedlist");
         }
 
+        send();
         String response = "Request data received: " + earthquakeEvent.getAction();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -54,5 +62,10 @@ public class WebSocketController {
     @MessageMapping("/clientLogs")
     public void displayClientLogs(String message) {
         System.out.println("LOG from websocket client: " + message);
+    }
+
+    @SendTo("/topic/greetings")
+    public void send() {
+        template.convertAndSend("/topic/greetings", "New linked list" + DataReserve.DoublyLinkedList.getInstance());
     }
 }
