@@ -1,8 +1,10 @@
 package com.eq.util;
 import com.eq.serialized.earthquake.Earthquake;
+import com.google.gson.Gson;
 import org.bson.Document;
 
 import javax.print.Doc;
+import java.util.ArrayList;
 
 
 public class DataReserve {
@@ -40,6 +42,18 @@ public class DataReserve {
             return instance;
         }
 
+        public String getJson() {
+            ArrayList<Earthquake> earthquakes = new ArrayList<>();
+
+            Node currentNode = head;
+            while (currentNode != null) {
+                earthquakes.add(currentNode.data);
+                currentNode = currentNode.next;
+            }
+
+            Gson gson = new Gson();
+            return gson.toJson(earthquakes);
+        }
         public void addToFront(Earthquake data) {
             Node newNode = new Node(data);
 

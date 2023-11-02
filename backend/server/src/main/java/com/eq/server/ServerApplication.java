@@ -7,6 +7,7 @@ import com.eq.serialized.earthquake.Earthquake;
 import com.eq.util.DataReserve;
 import com.google.gson.GsonBuilder;
 import com.mongodb.client.MongoClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.bson.Document;
@@ -38,6 +39,7 @@ public class ServerApplication {
 			String jsonString = doc.toJson();
 			earthquakes.add(gson.fromJson(jsonString, Earthquake.class));
 		}
+
 
 		for (Earthquake eq : earthquakes) {
 			DataReserve.DoublyLinkedList.getInstance().add(eq);
