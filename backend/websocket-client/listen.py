@@ -22,7 +22,7 @@ def myprocessing(message):
 
         
          # Send the data to the Spring Boot server
-        response = requests.post("http://localhost:8081/server/live/receive", json=data)
+        response = requests.post("http://localhost:8081/app/live/send", json=data)
         if response.status_code == 200:
             logging.info('Data sent to Spring Boot server successfully')
         else:
