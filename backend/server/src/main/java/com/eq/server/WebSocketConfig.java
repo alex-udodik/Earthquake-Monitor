@@ -20,6 +20,4 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/topic").setAllowedOrigins("*");;
 
     }
-
-
 }
