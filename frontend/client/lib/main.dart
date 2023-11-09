@@ -1,46 +1,16 @@
-import 'dart:js_interop';
-
+import 'package:client/src/data/models/earthquake.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'src/locations.dart' as locations;
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
 
-void onConnect(StompFrame frame) {
-  print("Connected!");
-  stompClient.subscribe(
-    destination: '/topic/greetings',
-    callback: (frame) {
-      print(frame.body);
-    },
-  );
+import 'dart:convert';
 
-  stompClient.send(
-    destination: '/app/hello',
-    body: "2134234",
-  );
-}
-
-final stompClient = StompClient(
-  config: StompConfig(
-    url: 'ws://localhost:8081/topic',
-    onConnect: onConnect,
-    beforeConnect: () async {
-      print('waiting to connect...');
-      await Future.delayed(const Duration(milliseconds: 200));
-      print('connecting...');
-    },
-    onWebSocketError: (error) => print(error),
-    stompConnectHeaders: {'Authorization': 'Bearer yourToken'},
-    webSocketConnectHeaders: {'Authorization': 'Bearer yourToken'},
-  ),
-);
+List<Earthquake> earthquakes = [];
 
 void main() {
   runApp(const MyApp());
-  stompClient.activate();
 }
 
 class MyApp extends StatefulWidget {
@@ -52,21 +22,73 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final Map<String, Marker> _markers = {};
+  late StompClient stompClient;
 
-  Future<void> _onMapCreated(GoogleMapController controller) async {
-    final googleOffices = await locations.getGoogleOffices();
+  @override
+  void initState() {
+    super.initState();
+
+    void onConnect(StompFrame frame) {
+      print("Connected!");
+      stompClient.subscribe(
+        destination: '/topic/greetings',
+        callback: (frame) {
+          String jsonString = frame.body.toString();
+          dynamic jsonData = json.decode(jsonString);
+          if (jsonData is List<dynamic>) {
+            List<Map<String, dynamic>> jsonArray =
+                jsonData.cast<Map<String, dynamic>>();
+            earthquakes = jsonArray
+                .map((jsonMap) => Earthquake.fromJson(jsonMap))
+                .toList();
+
+            updateMarkers(earthquakes);
+          } else {
+            print("Invalid JSON format. Expected a list.");
+          }
+        },
+      );
+
+      stompClient.send(
+        destination: '/app/hello',
+        body: "2134234",
+      );
+    }
+
+    final config = StompConfig(
+        url: 'ws://localhost:8081/topic',
+        onConnect: onConnect,
+        beforeConnect: () async {
+          print('waiting to connect...');
+          await Future.delayed(const Duration(milliseconds: 200));
+          print('connecting...');
+        },
+        onWebSocketError: (error) => print(error));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Call your function here
+      stompClient = StompClient(config: config);
+      stompClient.activate();
+    });
+  }
+
+  void updateMarkers(List<Earthquake> newEarthquakes) {
+    print("Setting state");
+    print("Currently " + newEarthquakes.length.toString() + " earthquakes.");
     setState(() {
       _markers.clear();
-      for (final office in googleOffices.offices) {
+      for (final earthquake in newEarthquakes) {
         final marker = Marker(
-          markerId: MarkerId(office.name),
-          position: LatLng(office.lat, office.lng),
+          markerId: MarkerId(
+              earthquake.data.id), // Use a unique identifier for the marker
+          position: LatLng(
+              earthquake.data.properties.lat, earthquake.data.properties.lon),
           infoWindow: InfoWindow(
-            title: office.name,
-            snippet: office.address,
+            title: earthquake.data.properties.flynnRegion,
+            snippet: earthquake.data.properties.mag.toString(),
           ),
         );
-        _markers[office.name] = marker;
+        _markers[earthquake.data.id] = marker;
       }
     });
   }
@@ -80,7 +102,6 @@ class _MyAppState extends State<MyApp> {
       ),
       home: Scaffold(
         body: GoogleMap(
-          onMapCreated: _onMapCreated,
           initialCameraPosition: const CameraPosition(
             target: LatLng(0, 0),
             zoom: 2,
