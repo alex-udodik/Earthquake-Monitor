@@ -1,9 +1,10 @@
 import 'package:client/src/data/models/earthquake.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' as latLng;
 
 import 'dart:convert';
 
@@ -20,8 +21,8 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
-  final Map<String, Marker> _markers = {};
+class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
+  //final Map<String, Marker> _markers = {};
   late StompClient stompClient;
 
   @override
@@ -42,7 +43,7 @@ class _MyAppState extends State<MyApp> {
                 .map((jsonMap) => Earthquake.fromJson(jsonMap))
                 .toList();
 
-            updateMarkers(earthquakes);
+            //updateMarkers(earthquakes);
           } else {
             print("Invalid JSON format. Expected a list.");
           }
@@ -72,9 +73,10 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+/*
   void updateMarkers(List<Earthquake> newEarthquakes) {
     print("Setting state");
-    print("Currently " + newEarthquakes.length.toString() + " earthquakes.");
+    print("Currently ${newEarthquakes.length} earthquakes.");
     setState(() {
       _markers.clear();
       for (final earthquake in newEarthquakes) {
@@ -92,23 +94,32 @@ class _MyAppState extends State<MyApp> {
       }
     });
   }
-
+*/
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.green[700],
-      ),
-      home: Scaffold(
-        body: GoogleMap(
-          initialCameraPosition: const CameraPosition(
-            target: LatLng(0, 0),
-            zoom: 2,
-          ),
-          markers: _markers.values.toSet(),
+        theme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: Colors.green[700],
         ),
-      ),
-    );
+        home: Scaffold(
+          body: Stack(
+            children: [
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: latLng.LatLng(51.509364, -0.128928),
+                  zoom: 3.2,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.app',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ));
   }
 }
