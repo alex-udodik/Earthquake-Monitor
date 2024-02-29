@@ -1,12 +1,17 @@
 import 'package:client/src/data/models/earthquake.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:stomp_dart_client/stomp.dart';
 import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
 import 'package:flutter_map/flutter_map.dart';
+
 import 'package:latlong2/latlong.dart' as latLng;
 
 import 'dart:convert';
+
+late AnimationController animationController;
+late final _animatedMapController;
 
 List<Earthquake> earthquakes = [];
 
@@ -21,13 +26,27 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
+class _MyAppState extends State<MyApp> with TickerProviderStateMixin {
   //final Map<String, Marker> _markers = {};
   late StompClient stompClient;
+  late Animation animation;
 
   @override
   void initState() {
     super.initState();
+
+    _animatedMapController = AnimatedMapController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+      curve: Curves.easeInOut,
+    );
+
+    animationController = AnimationController(
+      duration: Duration(seconds: 3),
+      vsync: this,
+    );
+
+    animationController.repeat(reverse: true);
 
     void onConnect(StompFrame frame) {
       print("Connected!");
@@ -96,6 +115,12 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   }
 */
   @override
+  void dispose() {
+    animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
         theme: ThemeData(
@@ -116,6 +141,38 @@ class _MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.app',
                   ),
+                  AnimatedMarkerLayer(
+                    markers: [
+                      AnimatedMarker(
+                        point: latLng.LatLng(52.2677, 5.1689),
+                        builder: (_, animationController) {
+                          final size = 50.0 * animationController.value;
+                          return Container(
+                            width: size,
+                            height: size,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red
+                                  .withOpacity(0.5), // Adjust opacity as needed
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  )
+                  /*CircleLayer(
+                    circles: [
+                      CircleMarker(
+                        point:
+                            latLng.LatLng(52.2677, 5.1689), // center of 't Gooi
+                        radius: 50 * (5 + animationController!.value),
+                        useRadiusInMeter: false,
+                        color: Colors.red.withOpacity(0.3),
+                        borderColor: Colors.red.withOpacity(0.7),
+                        borderStrokeWidth: 2,
+                      )
+                    ],
+                  )*/
                 ],
               ),
             ],
