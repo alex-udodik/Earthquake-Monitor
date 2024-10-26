@@ -1,4 +1,4 @@
-# Earthquake-Monitor
+# Architecture Design
 
 ![](images/design_v2.png)
 
