@@ -1,21 +1,31 @@
 const SockJS = require('sockjs-client');
-var sock = new SockJS('https://www.seismicportal.eu/standing_order');
-sock.onopen = function () {
 
-    console.log('connected');
+let sock;
+let reconnectInterval = 5000; // 5 seconds delay before reconnecting
 
-};
+function connect() {
+    sock = new SockJS('https://www.seismicportal.eu/standing_order');
 
-sock.onmessage = function (e) {
+    sock.onopen = function () {
+        console.log('Connected');
+    };
 
-    msg = JSON.parse(e.data);
+    sock.onmessage = function (e) {
+        let msg = JSON.parse(e.data);
+        console.log('Message received:', msg);
+    };
 
-    console.log('message received : ', msg);
+    sock.onclose = function () {
+        console.log('Disconnected. Attempting to reconnect in 5 seconds...');
+        setTimeout(connect, reconnectInterval);
+    };
 
-};
+    sock.onerror = function (error) {
+        console.error('Socket encountered error:', error);
+        console.log('Closing socket connection');
+        sock.close(); // Close the socket connection on error to trigger the reconnection logic
+    };
+}
 
-sock.onclose = function () {
-
-    console.log('disconnected');
-
-};
+// Initial connection
+connect();
