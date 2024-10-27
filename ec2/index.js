@@ -1,4 +1,6 @@
 const SockJS = require('sockjs-client');
+const MongodbSingleton = require('./mongob-singleton');
+const dotenv = require('dotenv').config();
 
 let sock;
 let reconnectInterval = 5000; // 5 seconds delay before reconnecting
@@ -27,5 +29,17 @@ function connect() {
     };
 }
 
-// Initial connection
+//create connection to mongodb
+(async () => {
+    try {
+        var mongodb = MongodbSingleton.getInstance();
+        await mongodb.connect();
+    } catch (error) {
+        console.log("Error: ", error);
+    }
+})();
+
+
+// Initial connection to seismicportal websocket upates
 connect();
+
