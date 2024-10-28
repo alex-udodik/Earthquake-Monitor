@@ -24,7 +24,7 @@ function connect() {
         let filter = { id: msg.data.id };
         let id = msg.data.id;
 
-        const result = await mongoUtil.replaceDocumentOrCreateNew("EarthquakesData", "Earthquake", filter, msg, { upsert: true });
+        const result = await mongoUtil.replaceDocumentOrCreateNew("EarthquakesData", "Earthquake", msg, filter, { upsert: true });
         console.log(result.upsertedCount > 0 ? `Earthquake data with id {${id}} was created in mongo database.` : `Document with id {${id}} was updated in mongo database.`);
 
     };
