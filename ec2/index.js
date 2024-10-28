@@ -1,20 +1,32 @@
 const SockJS = require('sockjs-client');
 const MongodbSingleton = require('./mongob-singleton');
+const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
 
 let sock;
 let reconnectInterval = 5000; // 5 seconds delay before reconnecting
+let url = 'https://www.seismicportal.eu/standing_order'
 
 function connect() {
-    sock = new SockJS('https://www.seismicportal.eu/standing_order');
+    sock = new SockJS(url);
 
     sock.onopen = function () {
-        console.log('Connected');
+        console.log(`Connected to ${url}`);
     };
 
-    sock.onmessage = function (e) {
+    sock.onmessage = async function (e) {
         let msg = JSON.parse(e.data);
-        console.log('Message received:', msg);
+        console.log(`Earthquake data received with ID ${msg.data.id}`);
+        console.log(`Time: ${msg.data.properties.time}`);
+        console.log(`Region: ${msg.data.properties.flynn_region}`);
+        console.log(`Magnitude: ${msg.data.properties.mag}`);
+
+        let filter = { id: msg.data.id };
+        let id = msg.data.id;
+
+        const result = await mongoUtil.replaceDocumentOrCreateNew("EarthquakesData", "Earthquake", filter, msg, { upsert: true });
+        console.log(result.upsertedCount > 0 ? `Earthquake data with id {${id}} was created in mongo database.` : `Document with id {${id}} was updated in mongo database.`);
+
     };
 
     sock.onclose = function () {
