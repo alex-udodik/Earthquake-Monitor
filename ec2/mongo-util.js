@@ -13,11 +13,6 @@ module.exports = {
             throw new MongoError(`Failed to update ${document} from ${database}.${collection}`);
         }
     },
-
-    findDocs: async function (database, collection, filter) {
-        const mongodbCollection = getCollection(database, collection);
-        return await mongodbCollection
-    },
 }
 
 const getCollection = function (database, collection) {
