@@ -21,12 +21,12 @@ function connect() {
         console.log(`Region: ${msg.data.properties.flynn_region}`);
         console.log(`Magnitude: ${msg.data.properties.mag}`);
 
-        let filter = { id: msg.data.id };
         let id = msg.data.id;
+        let filter = { "data.id": id };
 
         const result = await mongoUtil.replaceDocumentOrCreateNew("EarthquakesData", "Earthquake", msg, filter, { upsert: true });
-        console.log(result.upsertedCount > 0 ? `Earthquake data with id {${id}} was created in mongo database.` : `Document with id {${id}} was updated in mongo database.`);
-
+        console.log(result.modifiedCount == 0 ? `Earthquake data with id {${id}} was created in mongo database.` : `Document with id {${id}} was updated in mongo database.`);
+        console.log();
     };
 
     sock.onclose = function () {

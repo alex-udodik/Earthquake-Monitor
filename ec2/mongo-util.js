@@ -4,14 +4,19 @@ const { MongoError } = require("mongodb");
 
 module.exports = {
 
-    replaceDocumentOrCreateNew: async function (database, collection, query, filter, options) {
+    replaceDocumentOrCreateNew: async function (database, collection, document, filter, options) {
         try {
             const mongodbCollection = getCollection(database, collection);
-            return await mongodbCollection.replaceOne(filter, query, options);
+            return await mongodbCollection.replaceOne(filter, document, options);
         } catch (error) {
             console.log(error.message);
-            throw new MongoError(`Failed to update ${query} from ${database}.${collection}`);
+            throw new MongoError(`Failed to update ${document} from ${database}.${collection}`);
         }
+    },
+
+    findDocs: async function (database, collection, filter) {
+        const mongodbCollection = getCollection(database, collection);
+        return await mongodbCollection
     },
 }
 
