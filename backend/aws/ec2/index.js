@@ -1,64 +1,101 @@
+const WebSocket = require('ws');
 const SockJS = require('sockjs-client');
 const MongodbSingleton = require('./mongob-singleton');
 const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
 
-let sock;
-let reconnectInterval = 5000; // 5 seconds delay before reconnecting
-let url = 'https://www.seismicportal.eu/standing_order'
+const reconnectInterval = 5000; // 5 seconds delay before reconnecting
+const sourceUrl = 'https://www.seismicportal.eu/standing_order';
+const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
-function connect() {
-    sock = new SockJS(url);
+let sourceSock;
+let destinationSock;
+const now = new Date();
 
-    sock.onopen = function () {
-        console.log(`Connected to ${url}`);
+// Connect to the source WebSocket using SockJS (SeismicPortal)
+function connectSource() {
+    sourceSock = new SockJS(sourceUrl);
+
+    sourceSock.onopen = () => {
+
+        console.log(`${now.toISOString()} Connected to source WebSocket: ${sourceUrl}`);
     };
 
-    sock.onmessage = async function (e) {
-
-        //parse the data into a javascript object
-        let msg = JSON.parse(e.data);
+    sourceSock.onmessage = async (e) => {
+        // Parse data received from source WebSocket
 
 
-        console.log(`Earthquake data received with ID ${msg.data.id}`);
-        console.log(`Time: ${msg.data.properties.time}`);
-        console.log(`Region: ${msg.data.properties.flynn_region}`);
-        console.log(`Magnitude: ${msg.data.properties.mag}`);
+        const msg = JSON.parse(e.data);
+        console.log(`${now.toISOString()} Earthquake data received with ID ${msg.data.id}`);
+        console.log(`${now.toISOString()} Time: ${msg.data.properties.time}`);
+        console.log(`${now.toISOString()} Region: ${msg.data.properties.flynn_region}`);
+        console.log(`${now.toISOString()} Magnitude: ${msg.data.properties.mag}`);
 
-        let id = msg.data.id;
-        let filter = { "data.id": id };
+        const id = msg.data.id;
+        const filter = { "data.id": id };
 
-        //here we repalce an exisiting document based on the filter (id) or create a new one if it doesnt exist
+        // Replace an existing document or create a new one if it doesn't exist
         const result = await mongoUtil.replaceDocumentOrCreateNew("EarthquakesData", "Earthquake", msg, filter, { upsert: true });
+        console.log(result.modifiedCount === 0 ? `${now.toISOString()} Earthquake data with ID {${id}} created in MongoDB.` : `${now.toISOString()} Document with ID {${id}} updated in MongoDB.`);
 
-        //this just informs if there was a creation or replacement.
-        console.log(result.modifiedCount == 0 ? `Earthquake data with id {${id}} was created in mongo database.` : `Document with id {${id}} was updated in mongo database.`);
+        let dataToSend = {
+            action: "sendMessage",
+            source: "relay-server",
+            message: msg
+        }
+
+
+        // Forward the data to the destination WebSocket if connected
+        if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
+            destinationSock.send(JSON.stringify(dataToSend));
+            console.log(`${now.toISOString()} Data forwarded to destination WebSocket`);
+        } else {
+            console.log(`${now.toISOString()} Destination WebSocket is not connected, unable to forward data.`);
+        }
+
         console.log();
     };
 
-    sock.onclose = function () {
-        console.log('Disconnected. Attempting to reconnect in 5 seconds...');
-        setTimeout(connect, reconnectInterval);
+    sourceSock.onclose = () => {
+        console.log(`${now.toISOString()} Source WebSocket disconnected. Reconnecting...`);
+        setTimeout(connectSource, reconnectInterval);
     };
 
-    sock.onerror = function (error) {
-        console.error('Socket encountered error:', error);
-        console.log('Closing socket connection');
-        sock.close(); // Close the socket connection on error to trigger the reconnection logic
+    sourceSock.onerror = (error) => {
+        console.error(`${now.toISOString()} Source WebSocket encountered error:`, error);
+        sourceSock.close(); // Close to trigger reconnection
     };
 }
 
-//create connection to mongodb
+// Connect to the destination WebSocket using `ws`
+function connectDestination() {
+    destinationSock = new WebSocket(destinationUrl);
+
+    destinationSock.on('open', () => {
+        console.log(`${now.toISOString()} Connected to destination WebSocket: ${destinationUrl}`);
+    });
+
+    destinationSock.on('close', () => {
+        console.log(`${now.toISOString()} Destination WebSocket disconnected. Reconnecting...`);
+        setTimeout(connectDestination, reconnectInterval);
+    });
+
+    destinationSock.on('error', (error) => {
+        console.error(`${now.toISOString()} Destination WebSocket encountered error:`, error);
+        destinationSock.close(); // Close to trigger reconnection
+    });
+}
+
+// Initialize MongoDB connection
 (async () => {
     try {
-        var mongodb = MongodbSingleton.getInstance();
+        const mongodb = MongodbSingleton.getInstance();
         await mongodb.connect();
     } catch (error) {
-        console.log("Error: ", error);
+        console.log(`${now.toISOString()}MongoDB connection error: `, error);
     }
 })();
 
-
-// Initial connection to seismicportal websocket upates
-connect();
-
+// Start both WebSocket connections
+connectSource();
+connectDestination();
