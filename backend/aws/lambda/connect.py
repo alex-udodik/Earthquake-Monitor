@@ -1,7 +1,7 @@
 import json
 import boto3
 import os
-
+import redis 
 dynamodb = boto3.client('dynamodb')
 
 def lambda_handler(event, context):
