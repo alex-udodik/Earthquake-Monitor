@@ -57,7 +57,7 @@ function connectSource() {
         let dataToSend = {
             action: "sendMessage",
             source: "relay-server",
-            message: msg
+            message: earthquakesList.toJSONString()
         }
 
 
@@ -103,19 +103,11 @@ function connectDestination() {
 }
 
 
-// Create a Redis client
-//password: 'your-redis-auth-token',  // If you have Redis AUTH enabled, otherwise remove this line
-
-
 // Set a key/value pair in Redis
 async function setKeyValueRedis(key, val) {
     try {
         await client.set(key, val);
-        console.log('Key set successfully');
-
-        // Retrieve the value
-        //const value = await client.get(key);
-        //console.log(`Retrieved value: ${value}`);
+        console.log('Key set in redis successfully');
     } catch (error) {
         console.error('Error setting key/value:', error);
     }
@@ -151,3 +143,5 @@ function populateEarthquakesList(documents) {
 // Start both WebSocket connections
 connectSource();
 connectDestination();
+
+
