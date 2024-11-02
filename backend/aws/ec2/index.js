@@ -127,10 +127,11 @@ async function setKeyValue() {
 })();
 
 // Connect to the Redis client
+/*
 client.connect()
     .then(() => console.log('Connected to Redis'))
     .catch((err) => console.error('Redis connection error:', err));
-
+*/
 // Start both WebSocket connections
-//connectSource();
-//connectDestination();
+connectSource();
+connectDestination();
