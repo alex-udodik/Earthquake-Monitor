@@ -10,9 +10,25 @@ module.exports = {
             return await mongodbCollection.replaceOne(filter, document, options);
         } catch (error) {
             console.log(error.message);
-            throw new MongoError(`Failed to update ${document} from ${database}.${collection}`);
         }
     },
+
+    getLastXDocuments: async function (database, collection, lastX) {
+        try {
+
+            const mongodbCollection = getCollection(database, collection);
+            // Find last 100 inserted documents
+            const documents = await mongodbCollection.find({})
+                .sort({ _id: -1 }) // Sort by `_id` in descending order
+                .limit(100)         // Limit the result to 100 documents
+                .toArray();
+
+            //console.log("Last 100 documents:", documents);
+            return documents;
+        } catch (error) {
+            console.log(error.message);
+        }
+    }
 }
 
 const getCollection = function (database, collection) {

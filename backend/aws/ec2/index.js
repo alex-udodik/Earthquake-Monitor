@@ -3,15 +3,21 @@ const SockJS = require('sockjs-client');
 const MongodbSingleton = require('./mongob-singleton');
 const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
+const EarthquakesList = require('./earthquakes-list');
 
 const reconnectInterval = 5000; // 5 seconds delay before reconnecting
 const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
+
 const redis = require('redis');
+const client = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379 } });
 
 let sourceSock;
 let destinationSock;
+
 const now = new Date();
+const earthquakesList = new EarthquakesList();
+
 
 
 // Connect to the source WebSocket using SockJS (SeismicPortal)
@@ -44,6 +50,9 @@ function connectSource() {
         // Replace an existing document or create a new one if it doesn't exist
         const result = await mongoUtil.replaceDocumentOrCreateNew("EarthquakesData", "Earthquake", msg, filter, { upsert: true });
         console.log(result.modifiedCount === 0 ? `${now.toISOString()} Earthquake data with ID {${id}} created in MongoDB.` : `${now.toISOString()} Document with ID {${id}} updated in MongoDB.`);
+
+        earthquakesList.add(id, msg);
+        await setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
 
         let dataToSend = {
             action: "sendMessage",
@@ -95,23 +104,20 @@ function connectDestination() {
 
 
 // Create a Redis client
-const client = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379 } });
 //password: 'your-redis-auth-token',  // If you have Redis AUTH enabled, otherwise remove this line
 
 
 // Set a key/value pair in Redis
-async function setKeyValue() {
+async function setKeyValueRedis(key, val) {
     try {
-        await client.set('your_key', 'your_value');
+        await client.set(key, val);
         console.log('Key set successfully');
 
         // Retrieve the value
-        const value = await client.get('your_key');
-        console.log(`Retrieved value: ${value}`);
+        //const value = await client.get(key);
+        //console.log(`Retrieved value: ${value}`);
     } catch (error) {
         console.error('Error setting key/value:', error);
-    } finally {
-        await client.disconnect();
     }
 }
 
@@ -119,19 +125,29 @@ async function setKeyValue() {
 // Initialize MongoDB connection
 (async () => {
     try {
+        // Connect to the Redis client
+        await client.connect()
+            .then(() => console.log('Connected to Redis'))
+            .catch((err) => console.error('Redis connection error:', err));
         const mongodb = MongodbSingleton.getInstance();
         await mongodb.connect();
+        const last100Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 100);
+        populateEarthquakesList(last100Earthquakes);
+        setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
     } catch (error) {
         console.log(`${now.toISOString()}MongoDB connection error: `, error);
     }
 })();
 
-// Connect to the Redis client
-client.connect()
-    .then(() => console.log('Connected to Redis'))
-    .catch((err) => console.error('Redis connection error:', err));
+function populateEarthquakesList(documents) {
+    documents.forEach((doc) => {
+        delete doc._id;
+        earthquakesList.add(doc.data.id, doc);
+    });
+}
+
+
 
 // Start both WebSocket connections
-//connectSource();
-//connectDestination();
-setKeyValue();
+connectSource();
+connectDestination();
