@@ -7,10 +7,12 @@ const dotenv = require('dotenv').config();
 const reconnectInterval = 5000; // 5 seconds delay before reconnecting
 const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
+const redis = require('redis');
 
 let sourceSock;
 let destinationSock;
 const now = new Date();
+
 
 // Connect to the source WebSocket using SockJS (SeismicPortal)
 function connectSource() {
@@ -91,6 +93,29 @@ function connectDestination() {
     });
 }
 
+
+// Create a Redis client
+const client = redis.createClient({ socket: { host: "clustercfg.earthquake-cache-redis.ffv0ju.usw2.cache.amazonaws.com:6379", port: 6379 } });
+//password: 'your-redis-auth-token',  // If you have Redis AUTH enabled, otherwise remove this line
+
+
+// Set a key/value pair in Redis
+async function setKeyValue() {
+    try {
+        await client.set('your_key', 'your_value');
+        console.log('Key set successfully');
+
+        // Retrieve the value
+        const value = await client.get('your_key');
+        console.log(`Retrieved value: ${value}`);
+    } catch (error) {
+        console.error('Error setting key/value:', error);
+    } finally {
+        await client.disconnect();
+    }
+}
+
+
 // Initialize MongoDB connection
 (async () => {
     try {
@@ -101,6 +126,11 @@ function connectDestination() {
     }
 })();
 
+// Connect to the Redis client
+client.connect()
+    .then(() => console.log('Connected to Redis'))
+    .catch((err) => console.error('Redis connection error:', err));
+
 // Start both WebSocket connections
-connectSource();
-connectDestination();
+//connectSource();
+//connectDestination();
