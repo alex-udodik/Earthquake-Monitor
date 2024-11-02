@@ -26,6 +26,11 @@ function connectSource() {
 
 
         const msg = JSON.parse(e.data);
+        if (msg === undefined || msg === null || msg.data === undefined || msg.data === null || msg.data.id === undefined || msg.data.id === null) {
+            console.log(`${now.toISOString()} Earthquake data received with ID undefined. Skipping.`);
+            return;
+        }
+
         console.log(`${now.toISOString()} Earthquake data received with ID ${msg.data.id}`);
         console.log(`${now.toISOString()} Time: ${msg.data.properties.time}`);
         console.log(`${now.toISOString()} Region: ${msg.data.properties.flynn_region}`);
