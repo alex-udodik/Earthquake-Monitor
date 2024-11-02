@@ -95,7 +95,7 @@ function connectDestination() {
 
 
 // Create a Redis client
-const client = redis.createClient({ socket: { host: "clustercfg.earthquake-cache-redis.ffv0ju.usw2.cache.amazonaws.com:6379", port: 6379 } });
+const client = redis.createClient({ socket: { host: "52.6.170.93", port: 6379 } });
 //password: 'your-redis-auth-token',  // If you have Redis AUTH enabled, otherwise remove this line
 
 
@@ -127,11 +127,11 @@ async function setKeyValue() {
 })();
 
 // Connect to the Redis client
-/*
 client.connect()
     .then(() => console.log('Connected to Redis'))
     .catch((err) => console.error('Redis connection error:', err));
-*/
+
 // Start both WebSocket connections
-connectSource();
-connectDestination();
+//connectSource();
+//connectDestination();
+setKeyValue();
