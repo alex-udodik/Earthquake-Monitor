@@ -95,7 +95,7 @@ function connectDestination() {
 
 
 // Create a Redis client
-const client = redis.createClient({ socket: { host: "52.6.170.93", port: 6379 } });
+const client = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379 } });
 //password: 'your-redis-auth-token',  // If you have Redis AUTH enabled, otherwise remove this line
 
 
