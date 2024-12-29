@@ -1,7 +1,7 @@
 class Node {
     constructor(key, value) {
         this.key = key;
-        this.value = value;
+        this.details = value;
         this.prev = null;
         this.next = null;
     }
@@ -18,7 +18,7 @@ class EarthquakesList {
     add(key, value) {
         let existingNode = this.findNodeByKey(key);
         if (existingNode) {
-            existingNode.value = value;
+            existingNode.details = value;
             return;
         }
 
@@ -61,7 +61,7 @@ class EarthquakesList {
 
     find(key) {
         const node = this.findNodeByKey(key);
-        return node ? node.value : null;
+        return node ? node.details : null;
     }
 
     findNodeByKey(key) {
@@ -105,7 +105,7 @@ class EarthquakesList {
         let current = this.head;
         const listArray = [];
         while (current) {
-            listArray.push({ key: current.key, value: current.value });
+            listArray.push({ key: current.key, details: current.details });
             current = current.next;
         }
         return listArray;
