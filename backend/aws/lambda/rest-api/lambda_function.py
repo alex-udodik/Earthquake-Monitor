@@ -1,9 +1,10 @@
 import json
 import redis
+import os
 
 def lambda_handler(event, context):
     # Update with your EC2 instance's private IP address and Redis port (default: 6379)
-    redis_host = 'AWS_LIGHTSAIL_REDIS_URL'
+    redis_host = os.getenv("AWS_LIGHTSAIL_REDIS_URL")
     redis_port = 6379  # Default Redis port
     redis_key = "last100earthquakes"  # Key you want to retrieve
 
@@ -17,15 +18,18 @@ def lambda_handler(event, context):
         if value is None:
             return {
                 'statusCode': 404,
-                'body': json.dumps({'error': 'Key not found'})
+                'body': {'error': 'Key not found'}  # Directly return a dictionary
             }
+
+        # Parse the value as JSON
+        parsed_value = json.loads(value.decode('utf-8'))
 
         return {
             'statusCode': 200,
-            'body': json.dumps({'value': value.decode('utf-8')})  # Decode bytes to string
+            'body': parsed_value  # Return parsed JSON directly
         }
     except Exception as e:
         return {
             'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
+            'body': {'error': str(e)}  # Directly return the error as JSON
         }
