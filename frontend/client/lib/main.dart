@@ -1,9 +1,7 @@
 import 'package:client/src/data/models/earthquake.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:stomp_dart_client/stomp.dart';
-import 'package:stomp_dart_client/stomp_config.dart';
-import 'package:stomp_dart_client/stomp_frame.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'dart:convert';
 
@@ -22,54 +20,103 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final Map<String, Marker> _markers = {};
-  late StompClient stompClient;
+  late WebSocketChannel channel;
 
   @override
   void initState() {
     super.initState();
 
-    void onConnect(StompFrame frame) {
-      print("Connected!");
-      stompClient.subscribe(
-        destination: '/topic/greetings',
-        callback: (frame) {
-          String jsonString = frame.body.toString();
-          dynamic jsonData = json.decode(jsonString);
-          if (jsonData is List<dynamic>) {
-            List<Map<String, dynamic>> jsonArray =
-                jsonData.cast<Map<String, dynamic>>();
-            earthquakes = jsonArray
-                .map((jsonMap) => Earthquake.fromJson(jsonMap))
-                .toList();
+    // Log the connection attempt before initiating the connection
+    print("Attempting to connect to AWS WebSocket...");
 
-            updateMarkers(earthquakes);
-          } else {
-            print("Invalid JSON format. Expected a list.");
-          }
-        },
-      );
+    // Connect to AWS WebSocket
+    channel = WebSocketChannel.connect(
+      Uri.parse(
+          'wss://w0s7wouqu3.execute-api.us-west-2.amazonaws.com/production/'),
+    );
 
-      stompClient.send(
-        destination: '/app/hello',
-        body: "2134234",
-      );
+    // Delay to ensure connection setup is active
+    Future.delayed(Duration(milliseconds: 100), () {
+      print("Connection setup should now be active.");
+    });
+
+    // Listen for incoming messages
+    channel.stream.listen(
+      (message) {
+        print(
+            "Connected to AWS WebSocket!"); // This will print upon receiving the first message
+
+        // Print the entire object received from the WebSocket
+        print("Received message: $handleMessage($message)");
+
+        // Process the received message
+        dynamic jsonData = json.decode(message);
+        if (jsonData is List<dynamic>) {
+          List<Map<String, dynamic>> jsonArray =
+              jsonData.cast<Map<String, dynamic>>();
+          earthquakes =
+              jsonArray.map((jsonMap) => Earthquake.fromJson(jsonMap)).toList();
+
+          updateMarkers(earthquakes);
+        } else {
+          print("Invalid JSON format. Expected a list.");
+        }
+      },
+      onDone: () {
+        print("WebSocket connection closed.");
+      },
+      onError: (error) {
+        print("WebSocket connection error: $error");
+      },
+    );
+  }
+
+// Function to attempt JSON repair
+  String attemptJsonRepair(String message) {
+    // Remove any trailing commas and extra whitespace
+    message = message.trim().replaceAll(RegExp(r',\s*$'), '');
+
+    // Wrap it in a JSON array if it looks like it might contain multiple JSON objects
+    if (!message.startsWith("[")) {
+      message = "[$message]";
     }
 
-    final config = StompConfig(
-        url: 'ws://localhost:8081/topic',
-        onConnect: onConnect,
-        beforeConnect: () async {
-          print('waiting to connect...');
-          await Future.delayed(const Duration(milliseconds: 200));
-          print('connecting...');
-        },
-        onWebSocketError: (error) => print(error));
+    // Try to balance braces and brackets
+    int openBraces = message.split('{').length - 1;
+    int closeBraces = message.split('}').length - 1;
+    int openBrackets = message.split('[').length - 1;
+    int closeBrackets = message.split(']').length - 1;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Call your function here
-      stompClient = StompClient(config: config);
-      stompClient.activate();
-    });
+    // Add missing closing braces and brackets
+    while (closeBraces < openBraces) {
+      message += '}';
+      closeBraces++;
+    }
+    while (closeBrackets < openBrackets) {
+      message += ']';
+      closeBrackets++;
+    }
+
+    print("Repaired JSON: $message");
+    return message;
+  }
+
+  void handleMessage(String rawMessage) {
+    try {
+      // Try to parse the raw message as JSON
+      var decodedMessage = jsonDecode(rawMessage);
+      print("Decoded JSON: $decodedMessage");
+    } catch (e) {
+      print("Failed to parse JSON directly. Attempting to repair...");
+      String repairedJson = attemptJsonRepair(rawMessage);
+
+      try {
+        var decodedMessage = jsonDecode(repairedJson);
+        print("Decoded repaired JSON: $decodedMessage");
+      } catch (e) {
+        print("Failed to parse even after repair. Error: $e");
+      }
+    }
   }
 
   void updateMarkers(List<Earthquake> newEarthquakes) {
@@ -79,8 +126,7 @@ class _MyAppState extends State<MyApp> {
       _markers.clear();
       for (final earthquake in newEarthquakes) {
         final marker = Marker(
-          markerId: MarkerId(
-              earthquake.data.id), // Use a unique identifier for the marker
+          markerId: MarkerId(earthquake.data.id),
           position: LatLng(
               earthquake.data.properties.lat, earthquake.data.properties.lon),
           infoWindow: InfoWindow(
@@ -110,5 +156,12 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Close the WebSocket connection when the widget is disposed
+    channel.sink.close();
+    super.dispose();
   }
 }

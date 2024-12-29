@@ -34,6 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   stomp_dart_client: ^1.0.0
+  web_socket_channel: ^2.1.0
   cupertino_icons: ^1.0.2
   http: ^1.1.0
   json_serializable: ^6.7.1

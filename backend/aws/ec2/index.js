@@ -5,7 +5,7 @@ const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
 const EarthquakesList = require('./earthquakes-list');
 
-const reconnectInterval = 5000; // 5 seconds delay before reconnecting
+const reconnectInterval = 2000; // 5 seconds delay before reconnecting
 const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
