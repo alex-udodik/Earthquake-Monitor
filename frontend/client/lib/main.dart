@@ -123,9 +123,8 @@ class _MyAppState extends State<MyApp> {
       }
     }
 
-    setState(() {
-      earthquakes = tempEarthquakes;
-    });
+    earthquakes = tempEarthquakes;
+    updateMarkers(earthquakes);
   }
 
   // Update markers on the map
