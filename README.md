@@ -1,5 +1,6 @@
 # ChatGPT-generated UI for Mobile and Desktop
 ![](images/ui.png)
+![](images/ui_mobile.png)
 
 ### Architecture Design
 
