@@ -11,6 +11,8 @@ def lambda_handler(event, context):
     # Parse the incoming message
     message = json.loads(event['body'])
     if message['action'] == 'ping':
+
+        print("received ping from connection id: " + event['requestContext']['connectionId'])
         # Respond with a pong message to keep the connection alive
         response = {
             'action': 'pong',
