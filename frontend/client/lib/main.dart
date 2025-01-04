@@ -4,6 +4,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:async';
 
 import 'package:client/src/data/models/earthquake.dart';
 
@@ -24,6 +25,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final Map<String, Marker> _markers = {};
   late WebSocketChannel channel;
+  Timer? _pingTimer; // Timer to keep the WebSocket connection alive
 
   @override
   void initState() {
@@ -31,7 +33,6 @@ class _MyAppState extends State<MyApp> {
 
     // Fetch initial data from the API
     fetchInitialEarthquakeData().then((_) {
-      // After fetching, connect to the WebSocket
       print("Attempting to connect to AWS WebSocket...");
       final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
 
@@ -39,25 +40,48 @@ class _MyAppState extends State<MyApp> {
         Uri.parse(websocketUrl),
       );
 
-      Future.delayed(const Duration(milliseconds: 100), () {
-        print("Connection setup should now be active.");
-      });
+      // Start a ping timer to keep the connection alive
+      _startPingTimer();
 
       channel.stream.listen(
         (message) {
-          print("Received new earthquake");
+          //print("Received new earthquake");
           handleMessage(message);
         },
         onDone: () {
           print("WebSocket connection closed.");
+          _stopPingTimer(); // Stop the ping timer when the connection closes
         },
         onError: (error) {
           print("WebSocket connection error: $error");
+          _stopPingTimer(); // Stop the ping timer if there's an error
         },
       );
 
       updateMarkers(earthquakes);
     });
+  }
+
+  // Start a periodic ping timer
+  void _startPingTimer() {
+    _pingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      try {
+        channel.sink.add(json.encode({
+          'action': 'ping',
+          'source': 'flutter-client',
+          'message': 'ping to keep socket connection alive'
+        })); // Adjust message format as needed
+        print("Ping sent to WebSocket server.");
+      } catch (e) {
+        print("Error sending ping: $e");
+      }
+    });
+  }
+
+  // Stop the ping timer
+  void _stopPingTimer() {
+    _pingTimer?.cancel();
+    _pingTimer = null;
   }
 
   Future<void> fetchInitialEarthquakeData() async {
@@ -103,28 +127,49 @@ class _MyAppState extends State<MyApp> {
     print("EQ length: ${earthquakes.length}");
   }
 
-  // Handle WebSocket messages
   void handleMessage(String rawMessage) {
-    final List<dynamic> bodyData = json.decode(rawMessage);
+    try {
+      final decodedMessage = json.decode(rawMessage);
 
-    List<Earthquake> tempEarthquakes = [];
-    // Iterate over the 'body' list and access the 'details' field
-    for (var item in bodyData) {
-      if (item['details'] != null) {
-        // Extract 'details' for each item
-        var details = item['details'];
-
-        // Convert 'details' into an Earthquake object
-        var earthquake = Earthquake.fromJson({
-          'action': details['action'],
-          'data': details['data'], // Pass the 'data' part as it is
-        });
-        tempEarthquakes.add(earthquake);
+      // Check if the decoded message is a Map<String, dynamic>
+      if (decodedMessage is Map<String, dynamic>) {
+        if (decodedMessage['action'] == 'pong') {
+          print("Received message from server: ${decodedMessage['message']}");
+          return; // Exit early if it's just a pong message
+        }
       }
-    }
 
-    earthquakes = tempEarthquakes;
-    updateMarkers(earthquakes);
+      // Check if the decoded message is a List<dynamic>
+      else if (decodedMessage is List<dynamic>) {
+        final List<dynamic> bodyData = json.decode(rawMessage);
+        List<Earthquake> tempEarthquakes = [];
+        // Iterate over the 'body' list and access the 'details' field
+        for (var item in bodyData) {
+          if (item['details'] != null) {
+            // Extract 'details' for each item
+            var details = item['details'];
+
+            // Convert 'details' into an Earthquake object
+            var earthquake = Earthquake.fromJson({
+              'action': details['action'],
+              'data': details['data'], // Pass the 'data' part as it is
+            });
+            tempEarthquakes.add(earthquake);
+          }
+        }
+
+        earthquakes = tempEarthquakes;
+        print("Received message from server: Earthquake event");
+        print("Location: ${earthquakes[0].data.properties.flynnRegion}");
+        print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
+
+        updateMarkers(earthquakes);
+      } else {
+        print("Decoded message is of an unknown type");
+      }
+    } catch (e) {
+      print("Error handling message: $e");
+    }
   }
 
   // Update markers on the map
@@ -169,7 +214,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    // Close the WebSocket connection when the widget is disposed
+    _stopPingTimer(); // Stop the timer when disposing the widget
     channel.sink.close();
     super.dispose();
   }
