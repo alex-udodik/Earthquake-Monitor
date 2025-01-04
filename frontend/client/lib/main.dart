@@ -163,7 +163,7 @@ class _MyAppState extends State<MyApp> {
 
             earthquakes = tempEarthquakes;
             print(
-                "\n Received message from AWS WebSocket: New Earthquake event");
+                "\nReceived message from AWS WebSocket: New Earthquake event");
             print("Location: ${earthquakes[0].data.properties.flynnRegion}");
             print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
 
