@@ -112,7 +112,7 @@ function connectDestination() {
 
     destinationSock.on('message', (data) => {
         const message = JSON.parse(data);
-        if (message.action === 'pong') {
+        if (message.action === 'ping') {
             logWithTimestamp(`Received message from server: ${message.message}`);
         }
 
