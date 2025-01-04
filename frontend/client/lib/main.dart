@@ -71,7 +71,7 @@ class _MyAppState extends State<MyApp> {
           'source': 'flutter-client',
           'message': 'ping to keep socket connection alive'
         })); // Adjust message format as needed
-        print("Ping sent to WebSocket server.");
+        print("Ping sent to AWS WebSocket.");
       } catch (e) {
         print("Error sending ping: $e");
       }
@@ -134,7 +134,8 @@ class _MyAppState extends State<MyApp> {
       // Check if the decoded message is a Map<String, dynamic>
       if (decodedMessage is Map<String, dynamic>) {
         if (decodedMessage['action'] == 'ping') {
-          print("Received message from server: ${decodedMessage['message']}");
+          print(
+              "Received message from AWS WebSocket: ${decodedMessage['message']}");
           return; // Exit early if it's just a pong message
         }
 
@@ -161,7 +162,8 @@ class _MyAppState extends State<MyApp> {
             }
 
             earthquakes = tempEarthquakes;
-            print("Received message from server: Earthquake event");
+            print(
+                "\n Received message from AWS WebSocket: New Earthquake event");
             print("Location: ${earthquakes[0].data.properties.flynnRegion}");
             print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
 
