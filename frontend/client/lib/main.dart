@@ -133,37 +133,41 @@ class _MyAppState extends State<MyApp> {
 
       // Check if the decoded message is a Map<String, dynamic>
       if (decodedMessage is Map<String, dynamic>) {
-        if (decodedMessage['action'] == 'pong') {
+        if (decodedMessage['action'] == 'ping') {
           print("Received message from server: ${decodedMessage['message']}");
           return; // Exit early if it's just a pong message
         }
-      }
 
-      // Check if the decoded message is a List<dynamic>
-      else if (decodedMessage is List<dynamic>) {
-        final List<dynamic> bodyData = json.decode(rawMessage);
-        List<Earthquake> tempEarthquakes = [];
-        // Iterate over the 'body' list and access the 'details' field
-        for (var item in bodyData) {
-          if (item['details'] != null) {
-            // Extract 'details' for each item
-            var details = item['details'];
+        // Check if the decoded message has the action 'earthquake-event'
+        else if (decodedMessage['action'] == 'earthquake-event') {
+          // Check if the message is a stringified JSON array
+          var message = decodedMessage['message'];
+          if (message is String) {
+            // If message is a stringified JSON array, decode it
+            List<dynamic> earthquakeList =
+                json.decode(message); // Decode the stringified list
+            List<Earthquake> tempEarthquakes = [];
 
-            // Convert 'details' into an Earthquake object
-            var earthquake = Earthquake.fromJson({
-              'action': details['action'],
-              'data': details['data'], // Pass the 'data' part as it is
-            });
-            tempEarthquakes.add(earthquake);
+            // Iterate over the decoded list and extract earthquake details
+            for (var item in earthquakeList) {
+              if (item['details'] != null) {
+                var details = item['details'];
+                var earthquake = Earthquake.fromJson({
+                  'action': details['action'],
+                  'data': details['data'], // Pass the 'data' part as it is
+                });
+                tempEarthquakes.add(earthquake);
+              }
+            }
+
+            earthquakes = tempEarthquakes;
+            print("Received message from server: Earthquake event");
+            print("Location: ${earthquakes[0].data.properties.flynnRegion}");
+            print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
+
+            updateMarkers(earthquakes);
           }
         }
-
-        earthquakes = tempEarthquakes;
-        print("Received message from server: Earthquake event");
-        print("Location: ${earthquakes[0].data.properties.flynnRegion}");
-        print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
-
-        updateMarkers(earthquakes);
       } else {
         print("Decoded message is of an unknown type");
       }
