@@ -10,6 +10,12 @@ import 'package:client/src/data/models/earthquake.dart';
 
 List<Earthquake> earthquakes = [];
 
+// Logging function to log messages with timestamps
+void logWithTimestamp(String message) {
+  final now = DateTime.now();
+  print('${now.toIso8601String()} $message');
+}
+
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
   runApp(const MyApp());
@@ -26,159 +32,148 @@ class _MyAppState extends State<MyApp> {
   final Map<String, Marker> _markers = {};
   late WebSocketChannel channel;
   Timer? _pingTimer; // Timer to keep the WebSocket connection alive
+  Timer? _reconnectionTimer; // Timer for reconnection attempts
+  bool _isDisposed = false; // To track widget disposal
 
   @override
   void initState() {
     super.initState();
+    _connectToWebSocket();
+  }
 
-    // Fetch initial data from the API
-    fetchInitialEarthquakeData().then((_) {
-      print("Attempting to connect to AWS WebSocket...");
-      final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
+  void _connectToWebSocket() {
+    if (_isDisposed) return;
 
+    final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
+    logWithTimestamp("Attempting to connect to AWS WebSocket...");
+
+    try {
       channel = WebSocketChannel.connect(
         Uri.parse(websocketUrl),
       );
 
-      // Start a ping timer to keep the connection alive
-      _startPingTimer();
-
+      // Start listening to the WebSocket stream
       channel.stream.listen(
         (message) {
-          //print("Received new earthquake");
           handleMessage(message);
         },
-        onDone: () {
-          print("WebSocket connection closed.");
-          _stopPingTimer(); // Stop the ping timer when the connection closes
-        },
+        onDone: _handleDisconnection,
         onError: (error) {
-          print("WebSocket connection error: $error");
-          _stopPingTimer(); // Stop the ping timer if there's an error
+          logWithTimestamp("WebSocket connection error: $error");
+          _handleDisconnection();
         },
       );
 
-      updateMarkers(earthquakes);
+      // Fetch initial data and start ping timer
+      fetchInitialEarthquakeData();
+      _startPingTimer();
+    } catch (e) {
+      logWithTimestamp("Error connecting to WebSocket: $e");
+      _scheduleReconnection();
+    }
+  }
+
+  void _handleDisconnection() {
+    logWithTimestamp("WebSocket connection closed.");
+    _stopPingTimer();
+    _scheduleReconnection();
+  }
+
+  void _scheduleReconnection() {
+    if (_reconnectionTimer != null && _reconnectionTimer!.isActive) return;
+
+    logWithTimestamp("Scheduling WebSocket reconnection...");
+    _reconnectionTimer = Timer(const Duration(seconds: 2), () {
+      logWithTimestamp("Reconnecting to AWS WebSocket...");
+      _connectToWebSocket();
     });
   }
 
-  // Start a periodic ping timer
   void _startPingTimer() {
+    _pingTimer?.cancel();
     _pingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       try {
         channel.sink.add(json.encode({
           'action': 'ping',
           'source': 'flutter-client',
-          'message': 'ping to keep socket connection alive'
-        })); // Adjust message format as needed
-        print("Ping sent to AWS WebSocket.");
+          'message': 'ping to keep socket connection alive',
+        }));
+        logWithTimestamp("Ping sent to AWS WebSocket.");
       } catch (e) {
-        print("Error sending ping: $e");
+        logWithTimestamp("Error sending ping: $e");
       }
     });
   }
 
-  // Stop the ping timer
   void _stopPingTimer() {
     _pingTimer?.cancel();
     _pingTimer = null;
   }
 
-  Future<void> fetchInitialEarthquakeData() async {
-    final apiUrl = dotenv.env['API_URL'] ?? '';
-
+  void fetchInitialEarthquakeData() {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-
-      print("Response status code: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-
-        // Extract the 'body' field
-        if (jsonData['body'] is List) {
-          final List<dynamic> bodyData = jsonData['body'];
-
-          // Iterate over the 'body' list and access the 'details' field
-          for (var item in bodyData) {
-            if (item['details'] != null) {
-              // Extract 'details' for each item
-              var details = item['details'];
-
-              // Convert 'details' into an Earthquake object
-              var earthquake = Earthquake.fromJson({
-                'action': details['action'],
-                'data': details['data'], // Pass the 'data' part as it is
-              });
-
-              earthquakes.add(earthquake);
-            }
-          }
-        } else {
-          print("Error: 'body' field is not a list or is missing");
-        }
-      } else {
-        print("Failed to fetch data. Status code: ${response.statusCode}");
-      }
+      var message = {"action": "initData", "message": ""};
+      logWithTimestamp("Sending message...");
+      channel.sink.add(jsonEncode(message));
+      logWithTimestamp("Message sent: $message");
     } catch (e) {
-      print("Error fetching data: $e");
+      logWithTimestamp("Error sending message: $e");
     }
-
-    print("EQ length: ${earthquakes.length}");
   }
 
   void handleMessage(String rawMessage) {
     try {
       final decodedMessage = json.decode(rawMessage);
 
-      // Check if the decoded message is a Map<String, dynamic>
       if (decodedMessage is Map<String, dynamic>) {
         if (decodedMessage['action'] == 'ping') {
-          print(
+          logWithTimestamp(
               "Received message from AWS WebSocket: ${decodedMessage['message']}");
-          return; // Exit early if it's just a pong message
-        }
-
-        // Check if the decoded message has the action 'earthquake-event'
-        else if (decodedMessage['action'] == 'earthquake-event') {
-          // Check if the message is a stringified JSON array
+          return;
+        } else if (decodedMessage['action'] == 'earthquake-event' ||
+            decodedMessage['action'] == 'initData') {
           var message = decodedMessage['message'];
+          List<dynamic> earthquakeList;
+
           if (message is String) {
-            // If message is a stringified JSON array, decode it
-            List<dynamic> earthquakeList =
-                json.decode(message); // Decode the stringified list
-            List<Earthquake> tempEarthquakes = [];
-
-            // Iterate over the decoded list and extract earthquake details
-            for (var item in earthquakeList) {
-              if (item['details'] != null) {
-                var details = item['details'];
-                var earthquake = Earthquake.fromJson({
-                  'action': details['action'],
-                  'data': details['data'], // Pass the 'data' part as it is
-                });
-                tempEarthquakes.add(earthquake);
-              }
-            }
-
-            earthquakes = tempEarthquakes;
-            print(
-                "\nReceived message from AWS WebSocket: New Earthquake event");
-            print("Location: ${earthquakes[0].data.properties.flynnRegion}");
-            print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
-
-            updateMarkers(earthquakes);
+            earthquakeList = json.decode(message);
+          } else {
+            earthquakeList = message;
           }
+
+          List<Earthquake> tempEarthquakes = [];
+          for (var item in earthquakeList) {
+            if (item['details'] != null) {
+              var details = item['details'];
+              var earthquake = Earthquake.fromJson({
+                'action': details['action'],
+                'data': details['data'],
+              });
+              tempEarthquakes.add(earthquake);
+            }
+          }
+
+          earthquakes = tempEarthquakes;
+
+          if (decodedMessage['action'] == 'earthquake-event') {
+            logWithTimestamp(
+                "\nReceived message from AWS WebSocket: New Earthquake event");
+            logWithTimestamp(
+                "Location: ${earthquakes[0].data.properties.flynnRegion}");
+            logWithTimestamp(
+                "Magnitude: ${earthquakes[0].data.properties.mag} \n");
+          } else {
+            logWithTimestamp("Received initial earthquake data");
+          }
+
+          updateMarkers(earthquakes);
         }
-      } else {
-        print("Decoded message is of an unknown type");
       }
     } catch (e) {
-      print("Error handling message: $e");
+      logWithTimestamp("Error handling message: $e");
     }
   }
 
-  // Update markers on the map
   void updateMarkers(List<Earthquake> newEarthquakes) {
     setState(() {
       _markers.clear();
@@ -220,7 +215,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    _stopPingTimer(); // Stop the timer when disposing the widget
+    _isDisposed = true;
+    _stopPingTimer();
+    _reconnectionTimer?.cancel();
     channel.sink.close();
     super.dispose();
   }
