@@ -45,7 +45,6 @@ class _MyAppState extends State<MyApp> {
 
     channel.stream.listen(
       (message) {
-        print("Received message from server");
         handleMessage(message);
       },
       onDone: () {
