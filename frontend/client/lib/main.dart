@@ -26,49 +26,72 @@ class _MyAppState extends State<MyApp> {
   final Map<String, Marker> _markers = {};
   late WebSocketChannel channel;
   Timer? _pingTimer; // Timer to keep the WebSocket connection alive
+  Timer? _reconnectionTimer; // Timer for reconnection attempts
+  bool _isDisposed = false; // To track widget disposal
 
   @override
   void initState() {
     super.initState();
-
-    // Fetch initial data from the API
-
-    print("Attempting to connect to AWS WebSocket...");
-    final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
-
-    channel = WebSocketChannel.connect(
-      Uri.parse(websocketUrl),
-    );
-
-    // Start a ping timer to keep the connection alive
-    _startPingTimer();
-
-    channel.stream.listen(
-      (message) {
-        handleMessage(message);
-      },
-      onDone: () {
-        print("WebSocket connection closed.");
-        _stopPingTimer(); // Stop the ping timer when the connection closes
-      },
-      onError: (error) {
-        print("WebSocket connection error: $error");
-        _stopPingTimer(); // Stop the ping timer if there's an error
-      },
-    );
-
-    fetchInitialEarthquakeData();
+    _connectToWebSocket();
   }
 
-  // Start a periodic ping timer
+  void _connectToWebSocket() {
+    if (_isDisposed) return;
+
+    final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
+    print("Attempting to connect to AWS WebSocket...");
+
+    try {
+      channel = WebSocketChannel.connect(
+        Uri.parse(websocketUrl),
+      );
+
+      // Start listening to the WebSocket stream
+      channel.stream.listen(
+        (message) {
+          handleMessage(message);
+        },
+        onDone: _handleDisconnection,
+        onError: (error) {
+          print("WebSocket connection error: $error");
+          _handleDisconnection();
+        },
+      );
+
+      // Fetch initial data and start ping timer
+      fetchInitialEarthquakeData();
+      _startPingTimer();
+    } catch (e) {
+      print("Error connecting to WebSocket: $e");
+      _scheduleReconnection();
+    }
+  }
+
+  void _handleDisconnection() {
+    print("WebSocket connection closed.");
+    _stopPingTimer();
+    _scheduleReconnection();
+  }
+
+  void _scheduleReconnection() {
+    if (_reconnectionTimer != null && _reconnectionTimer!.isActive) return;
+
+    print("Scheduling WebSocket reconnection...");
+    _reconnectionTimer = Timer(const Duration(seconds: 2), () {
+      print("Reconnecting to AWS WebSocket...");
+      _connectToWebSocket();
+    });
+  }
+
   void _startPingTimer() {
+    _pingTimer?.cancel();
     _pingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       try {
         channel.sink.add(json.encode({
           'action': 'ping',
           'source': 'flutter-client',
-          'message': 'ping to keep socket connection alive'
-        })); // Adjust message format as needed
+          'message': 'ping to keep socket connection alive',
+        }));
         print("Ping sent to AWS WebSocket.");
       } catch (e) {
         print("Error sending ping: $e");
@@ -76,7 +99,6 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  // Stop the ping timer
   void _stopPingTimer() {
     _pingTimer?.cancel();
     _pingTimer = null;
@@ -85,7 +107,7 @@ class _MyAppState extends State<MyApp> {
   void fetchInitialEarthquakeData() {
     try {
       var message = {"action": "initData", "message": ""};
-      print("Sending message..");
+      print("Sending message...");
       channel.sink.add(jsonEncode(message));
       print("Message sent: $message");
     } catch (e) {
@@ -97,37 +119,29 @@ class _MyAppState extends State<MyApp> {
     try {
       final decodedMessage = json.decode(rawMessage);
 
-      // Check if the decoded message is a Map<String, dynamic>
       if (decodedMessage is Map<String, dynamic>) {
         if (decodedMessage['action'] == 'ping') {
           print(
               "Received message from AWS WebSocket: ${decodedMessage['message']}");
-          return; // Exit early if it's just a pong message
-        }
-
-        // Check if the decoded message has the action 'earthquake-event'
-        else if (decodedMessage['action'] == 'earthquake-event' ||
+          return;
+        } else if (decodedMessage['action'] == 'earthquake-event' ||
             decodedMessage['action'] == 'initData') {
-          // Check if the message is a stringified JSON array
           var message = decodedMessage['message'];
           List<dynamic> earthquakeList;
 
           if (message is String) {
-            // If message is a stringified JSON array, decode it
             earthquakeList = json.decode(message);
           } else {
             earthquakeList = message;
           }
 
           List<Earthquake> tempEarthquakes = [];
-
-          // Iterate over the decoded list and extract earthquake details
           for (var item in earthquakeList) {
             if (item['details'] != null) {
               var details = item['details'];
               var earthquake = Earthquake.fromJson({
                 'action': details['action'],
-                'data': details['data'], // Pass the 'data' part as it is
+                'data': details['data'],
               });
               tempEarthquakes.add(earthquake);
             }
@@ -141,18 +155,17 @@ class _MyAppState extends State<MyApp> {
             print("Location: ${earthquakes[0].data.properties.flynnRegion}");
             print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
           } else {
-            print("Recieved initial earthquake data");
+            print("Received initial earthquake data");
           }
 
           updateMarkers(earthquakes);
-        } else {}
+        }
       }
     } catch (e) {
       print("Error handling message: $e");
     }
   }
 
-  // Update markers on the map
   void updateMarkers(List<Earthquake> newEarthquakes) {
     setState(() {
       _markers.clear();
@@ -194,7 +207,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    _stopPingTimer(); // Stop the timer when disposing the widget
+    _isDisposed = true;
+    _stopPingTimer();
+    _reconnectionTimer?.cancel();
     channel.sink.close();
     super.dispose();
   }
