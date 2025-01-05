@@ -10,6 +10,12 @@ import 'package:client/src/data/models/earthquake.dart';
 
 List<Earthquake> earthquakes = [];
 
+// Logging function to log messages with timestamps
+void logWithTimestamp(String message) {
+  final now = DateTime.now();
+  print('${now.toIso8601String()} $message');
+}
+
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
   runApp(const MyApp());
@@ -39,7 +45,7 @@ class _MyAppState extends State<MyApp> {
     if (_isDisposed) return;
 
     final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
-    print("Attempting to connect to AWS WebSocket...");
+    logWithTimestamp("Attempting to connect to AWS WebSocket...");
 
     try {
       channel = WebSocketChannel.connect(
@@ -53,7 +59,7 @@ class _MyAppState extends State<MyApp> {
         },
         onDone: _handleDisconnection,
         onError: (error) {
-          print("WebSocket connection error: $error");
+          logWithTimestamp("WebSocket connection error: $error");
           _handleDisconnection();
         },
       );
@@ -62,13 +68,13 @@ class _MyAppState extends State<MyApp> {
       fetchInitialEarthquakeData();
       _startPingTimer();
     } catch (e) {
-      print("Error connecting to WebSocket: $e");
+      logWithTimestamp("Error connecting to WebSocket: $e");
       _scheduleReconnection();
     }
   }
 
   void _handleDisconnection() {
-    print("WebSocket connection closed.");
+    logWithTimestamp("WebSocket connection closed.");
     _stopPingTimer();
     _scheduleReconnection();
   }
@@ -76,9 +82,9 @@ class _MyAppState extends State<MyApp> {
   void _scheduleReconnection() {
     if (_reconnectionTimer != null && _reconnectionTimer!.isActive) return;
 
-    print("Scheduling WebSocket reconnection...");
+    logWithTimestamp("Scheduling WebSocket reconnection...");
     _reconnectionTimer = Timer(const Duration(seconds: 2), () {
-      print("Reconnecting to AWS WebSocket...");
+      logWithTimestamp("Reconnecting to AWS WebSocket...");
       _connectToWebSocket();
     });
   }
@@ -92,9 +98,9 @@ class _MyAppState extends State<MyApp> {
           'source': 'flutter-client',
           'message': 'ping to keep socket connection alive',
         }));
-        print("Ping sent to AWS WebSocket.");
+        logWithTimestamp("Ping sent to AWS WebSocket.");
       } catch (e) {
-        print("Error sending ping: $e");
+        logWithTimestamp("Error sending ping: $e");
       }
     });
   }
@@ -107,11 +113,11 @@ class _MyAppState extends State<MyApp> {
   void fetchInitialEarthquakeData() {
     try {
       var message = {"action": "initData", "message": ""};
-      print("Sending message...");
+      logWithTimestamp("Sending message...");
       channel.sink.add(jsonEncode(message));
-      print("Message sent: $message");
+      logWithTimestamp("Message sent: $message");
     } catch (e) {
-      print("Error sending message: $e");
+      logWithTimestamp("Error sending message: $e");
     }
   }
 
@@ -121,7 +127,7 @@ class _MyAppState extends State<MyApp> {
 
       if (decodedMessage is Map<String, dynamic>) {
         if (decodedMessage['action'] == 'ping') {
-          print(
+          logWithTimestamp(
               "Received message from AWS WebSocket: ${decodedMessage['message']}");
           return;
         } else if (decodedMessage['action'] == 'earthquake-event' ||
@@ -150,19 +156,21 @@ class _MyAppState extends State<MyApp> {
           earthquakes = tempEarthquakes;
 
           if (decodedMessage['action'] == 'earthquake-event') {
-            print(
+            logWithTimestamp(
                 "\nReceived message from AWS WebSocket: New Earthquake event");
-            print("Location: ${earthquakes[0].data.properties.flynnRegion}");
-            print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
+            logWithTimestamp(
+                "Location: ${earthquakes[0].data.properties.flynnRegion}");
+            logWithTimestamp(
+                "Magnitude: ${earthquakes[0].data.properties.mag} \n");
           } else {
-            print("Received initial earthquake data");
+            logWithTimestamp("Received initial earthquake data");
           }
 
           updateMarkers(earthquakes);
         }
       }
     } catch (e) {
-      print("Error handling message: $e");
+      logWithTimestamp("Error handling message: $e");
     }
   }
 
