@@ -32,34 +32,33 @@ class _MyAppState extends State<MyApp> {
     super.initState();
 
     // Fetch initial data from the API
-    fetchInitialEarthquakeData().then((_) {
-      print("Attempting to connect to AWS WebSocket...");
-      final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
 
-      channel = WebSocketChannel.connect(
-        Uri.parse(websocketUrl),
-      );
+    print("Attempting to connect to AWS WebSocket...");
+    final websocketUrl = dotenv.env['WEBSOCKET_URL'] ?? '';
 
-      // Start a ping timer to keep the connection alive
-      _startPingTimer();
+    channel = WebSocketChannel.connect(
+      Uri.parse(websocketUrl),
+    );
 
-      channel.stream.listen(
-        (message) {
-          //print("Received new earthquake");
-          handleMessage(message);
-        },
-        onDone: () {
-          print("WebSocket connection closed.");
-          _stopPingTimer(); // Stop the ping timer when the connection closes
-        },
-        onError: (error) {
-          print("WebSocket connection error: $error");
-          _stopPingTimer(); // Stop the ping timer if there's an error
-        },
-      );
+    // Start a ping timer to keep the connection alive
+    _startPingTimer();
 
-      updateMarkers(earthquakes);
-    });
+    channel.stream.listen(
+      (message) {
+        print("Received message from server");
+        handleMessage(message);
+      },
+      onDone: () {
+        print("WebSocket connection closed.");
+        _stopPingTimer(); // Stop the ping timer when the connection closes
+      },
+      onError: (error) {
+        print("WebSocket connection error: $error");
+        _stopPingTimer(); // Stop the ping timer if there's an error
+      },
+    );
+
+    fetchInitialEarthquakeData();
   }
 
   // Start a periodic ping timer
@@ -84,47 +83,15 @@ class _MyAppState extends State<MyApp> {
     _pingTimer = null;
   }
 
-  Future<void> fetchInitialEarthquakeData() async {
-    final apiUrl = dotenv.env['API_URL'] ?? '';
-
+  void fetchInitialEarthquakeData() {
     try {
-      final response = await http.get(Uri.parse(apiUrl));
-
-      print("Response status code: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonData = json.decode(response.body);
-
-        // Extract the 'body' field
-        if (jsonData['body'] is List) {
-          final List<dynamic> bodyData = jsonData['body'];
-
-          // Iterate over the 'body' list and access the 'details' field
-          for (var item in bodyData) {
-            if (item['details'] != null) {
-              // Extract 'details' for each item
-              var details = item['details'];
-
-              // Convert 'details' into an Earthquake object
-              var earthquake = Earthquake.fromJson({
-                'action': details['action'],
-                'data': details['data'], // Pass the 'data' part as it is
-              });
-
-              earthquakes.add(earthquake);
-            }
-          }
-        } else {
-          print("Error: 'body' field is not a list or is missing");
-        }
-      } else {
-        print("Failed to fetch data. Status code: ${response.statusCode}");
-      }
+      var message = {"action": "initData", "message": ""};
+      print("Sending message..");
+      channel.sink.add(jsonEncode(message));
+      print("Message sent: $message");
     } catch (e) {
-      print("Error fetching data: $e");
+      print("Error sending message: $e");
     }
-
-    print("EQ length: ${earthquakes.length}");
   }
 
   void handleMessage(String rawMessage) {
@@ -140,38 +107,46 @@ class _MyAppState extends State<MyApp> {
         }
 
         // Check if the decoded message has the action 'earthquake-event'
-        else if (decodedMessage['action'] == 'earthquake-event') {
+        else if (decodedMessage['action'] == 'earthquake-event' ||
+            decodedMessage['action'] == 'initData') {
           // Check if the message is a stringified JSON array
           var message = decodedMessage['message'];
+          List<dynamic> earthquakeList;
+
           if (message is String) {
             // If message is a stringified JSON array, decode it
-            List<dynamic> earthquakeList =
-                json.decode(message); // Decode the stringified list
-            List<Earthquake> tempEarthquakes = [];
+            earthquakeList = json.decode(message);
+          } else {
+            earthquakeList = message;
+          }
 
-            // Iterate over the decoded list and extract earthquake details
-            for (var item in earthquakeList) {
-              if (item['details'] != null) {
-                var details = item['details'];
-                var earthquake = Earthquake.fromJson({
-                  'action': details['action'],
-                  'data': details['data'], // Pass the 'data' part as it is
-                });
-                tempEarthquakes.add(earthquake);
-              }
+          List<Earthquake> tempEarthquakes = [];
+
+          // Iterate over the decoded list and extract earthquake details
+          for (var item in earthquakeList) {
+            if (item['details'] != null) {
+              var details = item['details'];
+              var earthquake = Earthquake.fromJson({
+                'action': details['action'],
+                'data': details['data'], // Pass the 'data' part as it is
+              });
+              tempEarthquakes.add(earthquake);
             }
+          }
 
-            earthquakes = tempEarthquakes;
+          earthquakes = tempEarthquakes;
+
+          if (decodedMessage['action'] == 'earthquake-event') {
             print(
                 "\nReceived message from AWS WebSocket: New Earthquake event");
             print("Location: ${earthquakes[0].data.properties.flynnRegion}");
             print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
-
-            updateMarkers(earthquakes);
+          } else {
+            print("Recieved initial earthquake data");
           }
-        }
-      } else {
-        print("Decoded message is of an unknown type");
+
+          updateMarkers(earthquakes);
+        } else {}
       }
     } catch (e) {
       print("Error handling message: $e");
