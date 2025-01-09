@@ -6,7 +6,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 
-import 'package:client/src/data/models/earthquake.dart';
+import 'package:client/data/models/earthquake.dart';
 
 List<Earthquake> earthquakes = [];
 
