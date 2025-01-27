@@ -31,7 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.0.2
-
+  provider: ^6.1.2
+  fl_chart: ^0.36.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   stomp_dart_client: ^1.0.0
