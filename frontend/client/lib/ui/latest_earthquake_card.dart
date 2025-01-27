@@ -3,31 +3,26 @@ import 'package:client/services/socket_provider.dart';
 import 'package:provider/provider.dart';
 import '../models/earthquake.dart';
 
-class StatCard extends StatefulWidget {
+class LatestEarthquakeCard extends StatefulWidget {
   final String title;
-  String value;
-
-  StatCard({required this.title, required this.value});
+  String region = "";
+  LatestEarthquakeCard({required this.title});
 
   @override
-  _StatCardState createState() => _StatCardState();
+  _LatestEarthquakeCardState createState() => _LatestEarthquakeCardState();
 }
 
-class _StatCardState extends State<StatCard> {
+class _LatestEarthquakeCardState extends State<LatestEarthquakeCard> {
   late List<Earthquake> earthquakes;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize any state here if necessary
-  }
 
   @override
   Widget build(BuildContext context) {
     final socketProvider = Provider.of<SocketProvider>(context, listen: true);
     earthquakes = socketProvider.earthquakes;
 
+    // Safely update the value
     _updateValue(earthquakes);
+
     return Card(
       margin: EdgeInsets.all(8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -41,10 +36,16 @@ class _StatCardState extends State<StatCard> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Spacer(),
-            Text(
-              widget.value,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            if (earthquakes.isNotEmpty)
+              Text(
+                widget.region,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              )
+            else
+              Text(
+                'No earthquake data available',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
           ],
         ),
       ),
@@ -52,15 +53,12 @@ class _StatCardState extends State<StatCard> {
   }
 
   void _updateValue(List<Earthquake> earthquakes) {
-    double sum = 0;
-
-    for (Earthquake earthquake in earthquakes) {
-      sum += earthquake.data.properties.mag;
+    if (earthquakes.isNotEmpty) {
+      Earthquake earthquake = earthquakes.first;
+      print(earthquake.data.properties.flynnRegion);
+      widget.region = earthquake.data.properties.flynnRegion;
+    } else {
+      print('No earthquake data available');
     }
-    print(earthquakes.length);
-    print("number: " + sum.toString());
-    setState(() {
-      widget.value = (sum / earthquakes.length).toStringAsFixed(2);
-    });
   }
 }

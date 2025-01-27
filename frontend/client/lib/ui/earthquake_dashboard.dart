@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'stat_card.dart';
 import 'chart_card.dart';
-import 'map.dart'; // Import the StatCard widget
+import 'map.dart';
+import 'latest_earthquake_card.dart'; // Import the StatCard widget
 
 class EarthquakeDashboard extends StatelessWidget {
   @override
@@ -18,9 +19,20 @@ class EarthquakeDashboard extends StatelessWidget {
             flex: 2,
             child: Stack(
               children: [
+                // Map Container with rounded corners
                 Container(
-                  color: Colors.blueGrey[900], // Placeholder for the map
-                  child: Center(child: MapScreen()),
+                  margin: EdgeInsets.all(
+                      16), // Optional, for spacing around the container
+                  decoration: BoxDecoration(
+                    color: Colors.blueGrey[900], // Placeholder for the map
+                    borderRadius: BorderRadius.circular(16), // Rounded corners
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(
+                        16), // Clip the child to the rounded corners
+                    child: Center(
+                        child: MapScreen()), // MapScreen with rounded corners
+                  ),
                 ),
                 // Overlays
                 Positioned(
@@ -43,14 +55,14 @@ class EarthquakeDashboard extends StatelessWidget {
           ),
           // Bottom Panels (Stats and Graphs)
           Expanded(
-            flex: 3,
+            flex: 1,
             child: GridView.count(
-              crossAxisCount: 2,
+              crossAxisCount: 8,
               padding: EdgeInsets.all(8),
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
               children: [
-                StatCard(title: 'Average Magnitude', value: '2.9'),
+                LatestEarthquakeCard(title: "Latest Earthquake"),
                 StatCard(title: 'Average Depth', value: '32 km'),
                 ChartCard(title: 'Recent Earthquakes'),
                 ChartCard(title: 'Depth Distribution'),

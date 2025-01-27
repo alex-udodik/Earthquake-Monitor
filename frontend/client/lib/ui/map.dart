@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart'; // Import Flutter Map
 import 'package:provider/provider.dart';
+import 'package:latlong2/latlong.dart'; // For LatLng class
 import 'package:client/services/socket_provider.dart';
 import '../models/earthquake.dart';
 
@@ -22,12 +23,21 @@ class _MapScreenState extends State<MapScreen> {
     _updateMarkers(earthquakes);
 
     return Scaffold(
-      body: GoogleMap(
-        initialCameraPosition: const CameraPosition(
-          target: LatLng(0, 0),
-          zoom: 2,
+      body: FlutterMap(
+        options: MapOptions(
+          center: LatLng(0, 0),
+          zoom: 3.0,
         ),
-        markers: _markers.values.toSet(),
+        children: [
+          TileLayer(
+            urlTemplate:
+                "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+            subdomains: ['a', 'b', 'c'],
+          ),
+          MarkerLayer(
+            markers: _markers.values.toList(),
+          ),
+        ],
       ),
     );
   }
@@ -36,16 +46,19 @@ class _MapScreenState extends State<MapScreen> {
     _markers.clear();
     for (final earthquake in earthquakes) {
       final marker = Marker(
-        markerId: MarkerId(earthquake.data.id),
-        position: LatLng(
+        point: LatLng(
           earthquake.data.properties.lat,
           earthquake.data.properties.lon,
         ),
-        infoWindow: InfoWindow(
-          title: earthquake.data.properties.flynnRegion,
-          snippet: earthquake.data.properties.mag.toString(),
+        width: 80.0,
+        height: 80.0,
+        builder: (ctx) => Icon(
+          Icons.location_on,
+          color: Colors.red,
+          size: 40,
         ),
       );
+
       _markers[earthquake.data.id] = marker;
     }
     setState(() {});
