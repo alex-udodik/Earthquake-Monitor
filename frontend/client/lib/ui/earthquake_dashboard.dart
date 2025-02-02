@@ -1,9 +1,11 @@
+import 'package:client/ui/latest_magnitude_card.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'stat_card.dart';
 import 'chart_card.dart';
 import 'map.dart';
-import 'latest_earthquake_card.dart'; // Import the StatCard widget
+import 'latest_earthquake_card.dart';
+import 'latest_magnitude_card.dart';
 
 class EarthquakeDashboard extends StatelessWidget {
   @override
@@ -64,6 +66,7 @@ class EarthquakeDashboard extends StatelessWidget {
               children: [
                 LatestEarthquakeCard(title: "Latest Earthquake"),
                 StatCard(title: 'Average Depth', value: '32 km'),
+                LatestMagnitudeCard(title: "Latest Magnitude"),
                 ChartCard(title: 'Recent Earthquakes'),
                 ChartCard(title: 'Depth Distribution'),
               ],
