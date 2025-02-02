@@ -1,13 +1,21 @@
-import 'package:client/ui/dashboard/cardlist.dart';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'stat_card.dart';
-import 'chart_card.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 import '../map/map.dart';
-import 'latest_earthquake_card.dart';
-import 'latest_magnitude_card.dart';
+import 'cardlist.dart';
 
-class EarthquakeDashboard extends StatelessWidget {
+class EarthquakeDashboard extends StatefulWidget {
+  @override
+  _EarthquakeDashboardState createState() => _EarthquakeDashboardState();
+}
+
+class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
+  final MapController _mapController = MapController();
+
+  void _moveCameraTo(LatLng position) {
+    _mapController.move(position, 8.0); // Adjust zoom as needed
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,14 +24,11 @@ class EarthquakeDashboard extends StatelessWidget {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Check if the screen width is larger than 600 (tablet size or larger)
           bool isWideScreen = constraints.maxWidth > 600;
 
           if (isWideScreen) {
-            // Desktop or tablet layout (Row)
             return Row(
               children: [
-                // Map Section takes up 4/5 of the screen horizontally
                 Expanded(
                   flex: 4,
                   child: Container(
@@ -34,11 +39,14 @@ class EarthquakeDashboard extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Center(child: MapScreen()), // Your Map widget
+                      child: Center(
+                        child: MapScreen(
+                          mapController: _mapController,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                // Widgets Section takes up 1/5 of the screen horizontally
                 Expanded(
                   flex: 1,
                   child: Container(
@@ -47,38 +55,22 @@ class EarthquakeDashboard extends StatelessWidget {
                       color: const Color.fromARGB(38, 38, 38, 1),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: EarthquakeCardList(), // Your list of cards
+                    child: EarthquakeCardList(
+                      onCardTap: _moveCameraTo, // Pass function to cards
+                    ),
                   ),
                 ),
               ],
             );
           } else {
-            // Mobile/web layout (Column)
             return Column(
               children: [
-                // Map Section takes up the full width
                 Expanded(
-                  child: Container(
-                    margin: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.blueGrey[900],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Center(child: MapScreen()), // Your Map widget
-                    ),
-                  ),
+                  child: MapScreen(mapController: _mapController),
                 ),
-                // Widgets Section takes up the full width
                 Expanded(
-                  child: Container(
-                    margin: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(38, 38, 38, 1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: EarthquakeCardList(), // Your list of cards
+                  child: EarthquakeCardList(
+                    onCardTap: _moveCameraTo,
                   ),
                 ),
               ],

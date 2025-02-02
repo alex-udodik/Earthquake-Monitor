@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart'; // Import Flutter Map
+import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
-import 'package:latlong2/latlong.dart'; // For LatLng class
+import 'package:latlong2/latlong.dart';
 import 'package:client/services/socket_provider.dart';
 import '../../models/earthquake.dart';
 import 'pulsating_marker.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final MapController mapController; // Accept a MapController
+
+  const MapScreen({Key? key, required this.mapController}) : super(key: key);
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -25,6 +27,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       body: FlutterMap(
+        mapController: widget.mapController, // Use the passed MapController
         options: MapOptions(
           center: LatLng(0, 0),
           zoom: 3.0,
@@ -62,4 +65,6 @@ class _MapScreenState extends State<MapScreen> {
     }
     setState(() {});
   }
+
+  // Method to move the map came
 }
