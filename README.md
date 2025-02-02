@@ -8,4 +8,3 @@
 
 ### Working Prototype
 ![Screenshot](images/prototype_2_1_2025.gif)
-![](images/prototype_sample_1_26_2025.png)
