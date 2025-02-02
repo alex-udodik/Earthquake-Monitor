@@ -2,7 +2,7 @@ import 'package:client/ui/earthquake_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:client/services/socket_provider.dart';
-import 'package:client/ui/map.dart';
+import 'package:client/ui/map/map.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
 

@@ -3,7 +3,8 @@ import 'package:flutter_map/flutter_map.dart'; // Import Flutter Map
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart'; // For LatLng class
 import 'package:client/services/socket_provider.dart';
-import '../models/earthquake.dart';
+import '../../models/earthquake.dart';
+import 'pulsating_marker.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -52,10 +53,8 @@ class _MapScreenState extends State<MapScreen> {
         ),
         width: 80.0,
         height: 80.0,
-        builder: (ctx) => Icon(
-          Icons.location_on,
-          color: Colors.red,
-          size: 40,
+        builder: (ctx) => PulsatingMarker(
+          magnitude: earthquake.data.properties.mag,
         ),
       );
 

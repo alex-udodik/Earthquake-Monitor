@@ -7,4 +7,4 @@
 ![](images/design_v2.png)
 
 ### Working Prototype
-![](images/prototype_sample_1_26_2025.png)
+![Screenshot](images/prototype_2_1_2025.gif)
