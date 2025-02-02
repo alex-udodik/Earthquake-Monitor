@@ -31,10 +31,10 @@ class _LatestEarthquakeCardState extends State<LatestEarthquakeCard> {
         screenWidth < 400 ? 18 : 24; // Adjust font size based on width
 
     return Card(
-      margin: EdgeInsets.all(2),
+      margin: EdgeInsets.all(4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
