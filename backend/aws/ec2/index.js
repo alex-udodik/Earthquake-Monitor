@@ -10,7 +10,25 @@ const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
 const redis = require('redis');
-const client = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379 } });
+const redisClient = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379, keepAlive: true } });
+
+// Handle Redis client events
+redisClient.on('connect', () => {
+    logWithTimestamp('Connected to Redis');
+});
+
+redisClient.on('ready', () => {
+    logWithTimestamp('Redis client is ready');
+});
+
+redisClient.on('error', (err) => {
+    logWithTimestamp(console.error('Redis client error:', err));
+});
+
+redisClient.on('end', () => {
+    logWithTimestamp('Redis connection closed. Attempting to reconnect...');
+    setTimeout(() => client.connect(), reconnectInterval);
+});
 
 let sourceSock;
 let destinationSock;
@@ -134,7 +152,7 @@ function connectDestination() {
 // Set a key/value pair in Redis
 async function setKeyValueRedis(key, val) {
     try {
-        await client.set(key, val);
+        await redisClient.set(key, val);
         logWithTimestamp('Key set in Redis successfully');
     } catch (error) {
         console.error('Error setting key/value in Redis:', error);
@@ -144,8 +162,8 @@ async function setKeyValueRedis(key, val) {
 // Initialize MongoDB connection
 (async () => {
     try {
-        await client.connect()
-            .then(() => logWithTimestamp('Connected to Redis'))
+        await redisClient.connect()
+            .then(() => logWithTimestamp('Connected to Redis asynchronously'))
             .catch((err) => console.error('Redis connection error:', err));
 
         const mongodb = MongodbSingleton.getInstance();
