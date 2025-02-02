@@ -1,5 +1,5 @@
 import 'base_stat_card.dart';
-import '../models/earthquake.dart';
+import '../../models/earthquake.dart';
 
 class LatestMagnitudeCard extends BaseStatCard {
   LatestMagnitudeCard({required String title}) : super(title: title);

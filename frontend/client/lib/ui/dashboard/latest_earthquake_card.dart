@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:client/services/socket_provider.dart';
 import 'package:provider/provider.dart';
-import '../models/earthquake.dart';
+import '../../models/earthquake.dart';
 
 class LatestEarthquakeCard extends StatefulWidget {
   final String title;

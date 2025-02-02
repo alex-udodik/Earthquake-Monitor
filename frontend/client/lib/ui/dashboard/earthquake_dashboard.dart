@@ -1,9 +1,8 @@
-import 'package:client/ui/latest_magnitude_card.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'stat_card.dart';
 import 'chart_card.dart';
-import 'map/map.dart';
+import '../map/map.dart';
 import 'latest_earthquake_card.dart';
 import 'latest_magnitude_card.dart';
 

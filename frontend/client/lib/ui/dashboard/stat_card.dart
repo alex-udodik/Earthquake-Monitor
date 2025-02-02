@@ -1,30 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:client/services/socket_provider.dart';
 import 'package:provider/provider.dart';
-import '../models/earthquake.dart';
+import '../../models/earthquake.dart';
 
-/// An abstract base class for stat cards.
-/// Child classes must implement the `calculateValue` method.
-abstract class BaseStatCard extends StatefulWidget {
+class StatCard extends StatefulWidget {
   final String title;
+  String value;
 
-  const BaseStatCard({required this.title, Key? key}) : super(key: key);
-
-  /// Each child class must override this method to define how the value is calculated.
-  String calculateValue(List<Earthquake> earthquakes);
+  StatCard({required this.title, required this.value});
 
   @override
-  _BaseStatCardState createState() => _BaseStatCardState();
+  _StatCardState createState() => _StatCardState();
 }
 
-class _BaseStatCardState extends State<BaseStatCard> {
+class _StatCardState extends State<StatCard> {
   late List<Earthquake> earthquakes;
-  String value = '';
 
   @override
   void initState() {
     super.initState();
-    // Perform any necessary initialization
+    // Initialize any state here if necessary
   }
 
   @override
@@ -33,9 +28,8 @@ class _BaseStatCardState extends State<BaseStatCard> {
     earthquakes = socketProvider.earthquakes;
 
     _updateValue(earthquakes);
-
     return Card(
-      margin: const EdgeInsets.all(8),
+      margin: EdgeInsets.all(8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -44,12 +38,12 @@ class _BaseStatCardState extends State<BaseStatCard> {
           children: [
             Text(
               widget.title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            const Spacer(),
+            Spacer(),
             Text(
-              value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              widget.value,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -58,8 +52,15 @@ class _BaseStatCardState extends State<BaseStatCard> {
   }
 
   void _updateValue(List<Earthquake> earthquakes) {
+    double sum = 0;
+
+    for (Earthquake earthquake in earthquakes) {
+      sum += earthquake.data.properties.mag;
+    }
+    print(earthquakes.length);
+    print("number: " + sum.toString());
     setState(() {
-      value = widget.calculateValue(earthquakes);
+      widget.value = (sum / earthquakes.length).toStringAsFixed(2);
     });
   }
 }
