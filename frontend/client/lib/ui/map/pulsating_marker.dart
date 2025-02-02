@@ -18,18 +18,22 @@ class _PulsatingMarkerState extends State<PulsatingMarker>
   void initState() {
     super.initState();
 
+    // Set up a unique animation duration based on magnitude
     final animationDuration = Duration(
-      milliseconds: (2000 / widget.magnitude.clamp(0.5, 10.0)).toInt(),
+      milliseconds: (2000 ~/ widget.magnitude).toInt(),
     );
 
+    // Create an independent controller for each marker
     _controller = AnimationController(
       vsync: this,
       duration: animationDuration,
     )..repeat(reverse: true);
 
+    // Set min and max scale based on magnitude
     double minScale = 0.5 + widget.magnitude / 20;
-    double maxScale = 1.5 + widget.magnitude / 10;
+    double maxScale = 2 + widget.magnitude / 10;
 
+    // Apply scaling animation
     _animation = Tween<double>(
       begin: minScale,
       end: maxScale,

@@ -51,8 +51,8 @@ class _MapScreenState extends State<MapScreen> {
           earthquake.data.properties.lat,
           earthquake.data.properties.lon,
         ),
-        width: 80.0,
-        height: 80.0,
+        width: 100.0,
+        height: 100.0,
         builder: (ctx) => PulsatingMarker(
           magnitude: earthquake.data.properties.mag,
         ),
