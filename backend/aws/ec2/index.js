@@ -57,6 +57,16 @@ function connectSource() {
             return;
         }
 
+        // Convert string timestamps to MongoDB Date objects
+        if (msg.data.properties) {
+            if (msg.data.properties.time) {
+                msg.data.properties.time = new Date(msg.data.properties.time);
+            }
+            if (msg.data.properties.lastupdate) {
+                msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
+            }
+        }
+
         const id = msg.data.id;
         logWithTimestamp(`Earthquake data received with ID ${id}`);
         logWithTimestamp(`Time: ${msg.data.properties.time}`);
@@ -94,6 +104,7 @@ function connectSource() {
             logWithTimestamp('Destination WebSocket is not connected, unable to forward data.');
         }
     };
+
 
     sourceSock.onclose = () => {
         logWithTimestamp('Source WebSocket disconnected. Reconnecting...');
