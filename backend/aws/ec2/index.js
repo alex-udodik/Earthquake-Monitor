@@ -190,7 +190,7 @@ async function setKeyValueRedis(key, val) {
 
 // Populate earthquakes list with initial data
 function populateEarthquakesList(documents) {
-    documents.forEach((doc) => {
+    documents.reverse.forEach((doc) => {
         delete doc._id;
         earthquakesList.add(doc.data.id, doc);
     });
