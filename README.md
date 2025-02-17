@@ -1,6 +1,6 @@
 ### Working Prototype
 https://staging.d1xq14igwfubyt.amplifyapp.com/
-![Screenshot](images/prototype.gif)
+![Screenshot](images/prototype_sample_2_17_2025.png)
 
 ### Architecture Design
 ![](images/design_v2.png)
