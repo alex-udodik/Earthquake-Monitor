@@ -1,112 +1,147 @@
-import 'package:client/ui/dashboard/chart_card.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../map/map.dart';
 import 'cardlist.dart';
+import 'chart_card.dart';
 
 class EarthquakeDashboard extends StatefulWidget {
   @override
   _EarthquakeDashboardState createState() => _EarthquakeDashboardState();
 }
 
-class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
+class _EarthquakeDashboardState extends State<EarthquakeDashboard>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final MapController _mapController = MapController();
 
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
   void _moveCameraTo(LatLng position) {
-    _mapController.move(position, 8.0); // Adjust zoom as needed
+    _mapController.move(position, 8.0);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Earthquake Dashboard'),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isWideScreen = constraints.maxWidth > 600;
+      body: Column(
+        children: [
+          // Tab Bar at the top (replacing AppBar)
+          Container(
+            color:
+                Color.fromARGB(48, 48, 48, 0), // Background color for the tabs
+            child: TabBar(
+              controller: _tabController,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Colors.blue,
+              tabs: [
+                Tab(icon: Icon(Icons.public), text: "Live View"),
+                Tab(icon: Icon(Icons.history), text: "History View"),
+              ],
+            ),
+          ),
 
-          if (isWideScreen) {
-            // For wider screens (desktop/tablet), using Row layout
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: Container(
-                          margin: EdgeInsets.all(4),
-                          height: MediaQuery.of(context).size.height * 0.8,
-                          decoration: BoxDecoration(
-                            color: Colors.blueGrey[900],
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Center(
-                              child: MapScreen(
-                                mapController: _mapController,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 1,
-                        child: Container(
-                          margin: EdgeInsets.all(4),
-                          height: MediaQuery.of(context).size.height * 0.8,
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(38, 38, 38, 1),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: EarthquakeCardList(
-                            onCardTap: _moveCameraTo,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  _buildAdditionalWidgets(), // Add extra widgets below
-                ],
-              ),
-            );
-          } else {
-            // For smaller screens (mobile), using Column layout with scroll
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  Container(
-                    height: MediaQuery.of(context).size.height * 0.4,
-                    child: MapScreen(mapController: _mapController),
-                  ),
-                  Container(
-                    height: MediaQuery.of(context).size.height * 0.4,
-                    child: EarthquakeCardList(
-                      onCardTap: _moveCameraTo,
-                    ),
-                  ),
-                  _buildAdditionalWidgets(), // Add extra widgets below
-                ],
-              ),
-            );
-          }
-        },
+          // Expanded TabBarView (Main Content)
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildMapScreen(isLive: true), // Live View
+                _buildMapScreen(isLive: false), // History View
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // Method to add additional widgets under the map and card list
+  Widget _buildMapScreen({required bool isLive}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isWideScreen = constraints.maxWidth > 600;
+
+        if (isWideScreen) {
+          return Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    // Map takes up full available space
+                    Expanded(
+                      flex: 4,
+                      child: Container(
+                        margin: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey[900],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Center(
+                            child: MapScreen(
+                              mapController: _mapController,
+                              isLive: isLive,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Card List takes up full available space
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        margin: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(38, 38, 38, 1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: EarthquakeCardList(
+                          onCardTap: _moveCameraTo,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Only show additional widgets in History View
+              if (!isLive) _buildAdditionalWidgets(),
+            ],
+          );
+        } else {
+          return Column(
+            children: [
+              Expanded(
+                child: MapScreen(mapController: _mapController, isLive: isLive),
+              ),
+              Expanded(
+                child: EarthquakeCardList(
+                  onCardTap: _moveCameraTo,
+                ),
+              ),
+
+              // Only show additional widgets in History View
+              if (!isLive) _buildAdditionalWidgets(),
+            ],
+          );
+        }
+      },
+    );
+  }
+
   Widget _buildAdditionalWidgets() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start, // Align items to the left
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 20),
-        // Constrain the ChartCard's height to prevent infinite height error
         SizedBox(
-          height: 300, // Adjust height as needed
+          height: 300,
           child: ChartCard(title: "dist"),
         ),
         SizedBox(height: 20),

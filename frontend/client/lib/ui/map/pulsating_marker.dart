@@ -53,20 +53,21 @@ class _PulsatingMarkerState extends State<PulsatingMarker>
     double normalizedMagnitude = magnitude.clamp(0.0, 10.0);
 
     final List<Color> gradientColors = [
-      Colors.green,
-      Colors.lightGreen,
-      Colors.yellow,
-      Colors.amber,
-      Colors.orange,
-      Colors.deepOrange,
-      Colors.red,
-      Colors.red.shade700,
-      Colors.brown,
-      Colors.brown.shade900,
+      Colors.green, // 0.0 - 2.9
+      Colors.lightGreen, // 3.0 - 3.9
+      Colors.yellow, // 4.0 - 4.9
+      Colors.amber, // 5.0 - 5.9
+      Colors.orange, // 6.0 - 6.9
+      Colors.deepOrange, // 7.0 - 7.9
+      Colors.red, // 8.0 - 8.9
+      Colors.red.shade700, // 9.0 - 9.9
+      Colors.brown, // 10.0
     ];
 
+    // Determine index based on whole number magnitude tiers
     int index =
-        (normalizedMagnitude / 10 * (gradientColors.length - 1)).floor();
+        (normalizedMagnitude.floor()).clamp(0, gradientColors.length - 1);
+
     return gradientColors[index];
   }
 

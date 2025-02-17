@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import '../../models/earthquake.dart';
 import 'package:client/services/socket_provider.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:intl/intl.dart';
 
 class EarthquakeCardList extends StatefulWidget {
   final void Function(LatLng) onCardTap; // Callback function
@@ -17,6 +18,7 @@ class EarthquakeCardList extends StatefulWidget {
 
 class _EarthquakeCardListState extends State<EarthquakeCardList> {
   late AudioPlayer _audioPlayer;
+  int? _newEarthquakeIndex; // Track the latest earthquake index
 
   @override
   void initState() {
@@ -33,53 +35,139 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
       return Center(child: CircularProgressIndicator());
     }
 
+    // Play sound and highlight the latest earthquake when a new one arrives
     if (socketProvider.newEarthquakeReceived) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        setState(() {
+          _newEarthquakeIndex = 0; // Highlight the top card
+        });
+
         _playSound();
+
+        // Remove the highlight after 1 second
+        Future.delayed(Duration(seconds: 1), () {
+          setState(() {
+            _newEarthquakeIndex = null;
+          });
+        });
+
         socketProvider.resetNewEarthquakeFlag();
       });
     }
 
-    return ListView.builder(
-      itemCount: earthquakes.length,
-      itemBuilder: (context, index) {
-        final earthquake = earthquakes[index];
-
-        return GestureDetector(
-          onTap: () {
-            widget.onCardTap(LatLng(
-              earthquake.data.properties.lat,
-              earthquake.data.properties.lon,
-            ));
-          },
-          child: Card(
-            margin: EdgeInsets.all(4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 4,
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Location: ${earthquake.data.properties.flynnRegion}',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text('Magnitude: ${earthquake.data.properties.mag}'),
-                  Text('Depth: ${earthquake.data.properties.depth} km'),
-                  Text('Time: ${earthquake.data.properties.time}'),
-                  Text(
-                      'Lat: ${earthquake.data.properties.lat}, Long: ${earthquake.data.properties.lon}'),
-                ],
-              ),
-            ),
+    return Column(
+      children: [
+        // Sticky Header
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.cyan.shade700, // Light red background
+            borderRadius: BorderRadius.circular(12), // Rounded borders
           ),
-        );
-      },
+          margin: EdgeInsets.all(8), // Adds spacing around the header
+          child: Text(
+            "Last 100 Earthquakes",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black, // Text in black for contrast
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+
+        // List of Earthquakes
+        Expanded(
+          child: ListView.builder(
+            itemCount: earthquakes.length
+                .clamp(0, 100), // Limit to last 100 earthquakes
+            itemBuilder: (context, index) {
+              final earthquake = earthquakes[index];
+              DateTime parsedTime =
+                  DateTime.parse(earthquake.data.properties.time);
+              String formattedTime =
+                  DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedTime);
+
+              return GestureDetector(
+                onTap: () {
+                  widget.onCardTap(LatLng(
+                    earthquake.data.properties.lat,
+                    earthquake.data.properties.lon,
+                  ));
+                },
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 500), // Smooth fade effect
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: _newEarthquakeIndex == index
+                        ? [
+                            BoxShadow(
+                              color: Colors.yellow.withOpacity(0.8),
+                              blurRadius: 15,
+                              spreadRadius: 4,
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: Card(
+                    margin: EdgeInsets.all(4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    color: _getColorFromGradient(earthquake.data.properties.mag)
+                        .withOpacity(0.5),
+                    elevation: 4,
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Location: ${earthquake.data.properties.flynnRegion}',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 8),
+                          Text('Magnitude: ${earthquake.data.properties.mag}'),
+                          Text('Depth: ${earthquake.data.properties.depth} km'),
+                          Text('Time: ${formattedTime}'),
+                          Text(
+                            'Lat: ${earthquake.data.properties.lat}, Long: ${earthquake.data.properties.lon}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+
+  Color _getColorFromGradient(double magnitude) {
+    double normalizedMagnitude = magnitude.clamp(0.0, 10.0);
+
+    final List<Color> gradientColors = [
+      Colors.green, // 0.0 - 2.9
+      Colors.lightGreen, // 3.0 - 3.9
+      Colors.yellow, // 4.0 - 4.9
+      Colors.amber, // 5.0 - 5.9
+      Colors.orange, // 6.0 - 6.9
+      Colors.deepOrange, // 7.0 - 7.9
+      Colors.red, // 8.0 - 8.9
+      Colors.red.shade700, // 9.0 - 9.9
+      Colors.brown, // 10.0
+    ];
+
+    // Determine index based on whole number magnitude tiers
+    int index =
+        (normalizedMagnitude.floor()).clamp(0, gradientColors.length - 1);
+
+    return gradientColors[index];
   }
 
   void _playSound() async {

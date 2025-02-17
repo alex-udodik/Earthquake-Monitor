@@ -1,0 +1,26 @@
+
+
+last 30 days
+last 90 days
+last 24 hours
+last 7 days
+
+Filter:
+by region
+by magnitude
+by danger level
+
+set date filter
+
+change time to local time
+
+View all earthquakes in PST or difference  timezone
+
+Add fault lines on map
+
+calculator for checking if you will feel it based on mag, distance, depth, etc
+danger level for major city
+
+
+
+

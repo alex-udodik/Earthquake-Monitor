@@ -5,15 +5,18 @@ import 'package:latlong2/latlong.dart';
 import 'package:client/services/socket_provider.dart';
 import '../../models/earthquake.dart';
 import 'pulsating_marker.dart';
-import 'earthquake_filter_modal.dart'; // Import the filter modal
-import 'earthquake_info_panel.dart'; // Import the info panel
-import 'earthquake_legend.dart'; // Import the legend
-import 'location_search.dart'; // Import the location search
+import 'earthquake_filter_modal.dart';
+import 'earthquake_info_panel.dart';
+import 'earthquake_legend.dart';
+import 'location_search.dart';
+import 'live_earthquake_widget.dart'; // Import the Live Widget
 
 class MapScreen extends StatefulWidget {
   final MapController mapController;
+  final bool isLive; // Determines whether it's live or history
 
-  const MapScreen({Key? key, required this.mapController}) : super(key: key);
+  const MapScreen({Key? key, required this.mapController, required this.isLive})
+      : super(key: key);
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -22,7 +25,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   final Map<String, Marker> _markers = {};
   Earthquake? _selectedEarthquake;
-  Offset? _tapPosition; // Store tap position
+  Offset? _tapPosition;
 
   double minMagnitude = 0.0;
   double maxMagnitude = 10.0;
@@ -33,14 +36,15 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final socketProvider = Provider.of<SocketProvider>(context);
-    final earthquakes = socketProvider.earthquakes;
+    final earthquakes = widget.isLive
+        ? socketProvider.earthquakes // Live Data
+        : _fetchHistoricalData(); // Historical Data
 
     _updateMarkers(earthquakes);
 
     return Scaffold(
       body: Stack(
         children: [
-          // Map Layer
           GestureDetector(
             onTapDown: (TapDownDetails details) {
               setState(() {
@@ -79,33 +83,8 @@ class _MapScreenState extends State<MapScreen> {
           // Location Search Bar
           LocationSearch(mapController: widget.mapController),
 
-          // Floating Filter Button
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton(
-              backgroundColor: Colors.yellow,
-              onPressed: () {
-                _showFilterModal(context);
-              },
-              child: Icon(Icons.filter_list, color: Colors.black),
-            ),
-          ),
-
-          // Floating Earthquake Info Panel (Appears Under Mouse)
-          if (_selectedEarthquake != null && _tapPosition != null)
-            Positioned(
-              left: _tapPosition!.dx,
-              top: _tapPosition!.dy - 50,
-              child: EarthquakeInfoPanel(
-                selectedEarthquake: _selectedEarthquake!,
-                onClose: () {
-                  setState(() {
-                    _selectedEarthquake = null;
-                  });
-                },
-              ),
-            ),
+          // Live Earthquake Widget (Only in Live View)
+          if (widget.isLive) LiveEarthquakeWidget(),
 
           // Magnitude Legend
           EarthquakeLegend(),
@@ -114,65 +93,24 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  // Show Filter Modal
-  void _showFilterModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: Colors.grey[900],
-      builder: (context) {
-        return EarthquakeFilterModal(
-          onApplyFilters: (double minMag, double maxMag, double minD,
-              double maxD, double time) {
-            setState(() {
-              minMagnitude = minMag;
-              maxMagnitude = maxMag;
-              minDepth = minD;
-              maxDepth = maxD;
-              timeRange = time;
-            });
-            _updateMarkers(Provider.of<SocketProvider>(context, listen: false)
-                .earthquakes);
-          },
-        );
-      },
-    );
+  // Fetch historical earthquake data (replace with real API)
+  List<Earthquake> _fetchHistoricalData() {
+    return []; // Implement historical data fetching here
   }
 
-  // Update markers with onTap functionality
   void _updateMarkers(List<Earthquake> earthquakes) {
     _markers.clear();
     for (final earthquake in earthquakes) {
-      double magnitude = earthquake.data.properties.mag;
-      double depth = earthquake.data.properties.depth;
-      if (magnitude >= minMagnitude &&
-          magnitude <= maxMagnitude &&
-          depth >= minDepth &&
-          depth <= maxDepth) {
-        final marker = Marker(
-          point: LatLng(
-            earthquake.data.properties.lat,
-            earthquake.data.properties.lon,
-          ),
-          width: 100.0,
-          height: 100.0,
-          builder: (ctx) => GestureDetector(
-            onTapDown: (TapDownDetails details) {
-              setState(() {
-                _tapPosition = details.globalPosition;
-                _selectedEarthquake = earthquake;
-              });
-            },
-            child: PulsatingMarker(
-              magnitude: magnitude,
-            ),
-          ),
-        );
-        _markers[earthquake.data.id] = marker;
-      }
+      final marker = Marker(
+        point: LatLng(
+            earthquake.data.properties.lat, earthquake.data.properties.lon),
+        width: 100.0,
+        height: 100.0,
+        builder: (ctx) => PulsatingMarker(
+          magnitude: earthquake.data.properties.mag,
+        ),
+      );
+      _markers[earthquake.data.id] = marker;
     }
     setState(() {});
   }
