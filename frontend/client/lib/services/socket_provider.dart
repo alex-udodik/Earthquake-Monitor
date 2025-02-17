@@ -13,6 +13,9 @@ class SocketProvider with ChangeNotifier {
   List<Earthquake> _earthquakes = [];
   List<Earthquake> get earthquakes => _earthquakes;
 
+  bool _newEarthquakeReceived = false;
+  bool get newEarthquakeReceived => _newEarthquakeReceived;
+
   SocketProvider() {
     connect();
   }
@@ -87,21 +90,29 @@ class SocketProvider with ChangeNotifier {
 
           _earthquakes = tempEarthquakes;
 
+          // If it's a new earthquake event, set the flag
           if (decodedMessage['action'] == 'earthquake-event') {
             print(
                 "\nReceived message from AWS WebSocket: New Earthquake event");
             print("Location: ${earthquakes[0].data.properties.flynnRegion}");
             print("Magnitude: ${earthquakes[0].data.properties.mag} \n");
+
+            _newEarthquakeReceived = true;
           } else {
-            print("Recieved initial earthquake data");
+            print("Received initial earthquake data");
           }
 
           notifyListeners();
-        } else {}
+        }
       }
     } catch (e) {
       print("Error handling message: $e");
     }
+  }
+
+  void resetNewEarthquakeFlag() {
+    _newEarthquakeReceived = false;
+    notifyListeners();
   }
 
   void _startPingTimer() {

@@ -1,4 +1,4 @@
-import 'package:client/ui/earthquake_dashboard.dart';
+import 'package:client/ui/dashboard/earthquake_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:client/services/socket_provider.dart';
