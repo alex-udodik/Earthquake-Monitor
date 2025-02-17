@@ -67,13 +67,13 @@ function connectSource() {
             }
         }
 
-        const time = msg.data.properties.time;
+        const id = msg.data.id;
         logWithTimestamp(`Earthquake data received with ID ${id}`);
         logWithTimestamp(`Time: ${msg.data.properties.time}`);
         logWithTimestamp(`Region: ${msg.data.properties.flynn_region}`);
         logWithTimestamp(`Magnitude: ${msg.data.properties.mag}`);
 
-        const filter = { "data.properties.time": time };
+        const filter = { "data.id": id };
         const result = await mongoUtil.replaceDocumentOrCreateNew(
             "EarthquakesData",
             "Earthquake",
