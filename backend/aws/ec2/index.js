@@ -108,7 +108,7 @@ sourceSock.onerror = (error) => {
     console.error(`${new Date().toISOString()} Source WebSocket encountered error:`, error);
     sourceSock.close(); // Close to trigger reconnection
 };
-}
+
 
 // Connect to the destination WebSocket
 function connectDestination() {
