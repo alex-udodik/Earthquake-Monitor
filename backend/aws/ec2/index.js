@@ -43,72 +43,79 @@ function logWithTimestamp(message) {
 }
 
 // Connect to the source WebSocket using SockJS (SeismicPortal)
-sourceSock.onmessage = async (e) => {
-    const msg = JSON.parse(e.data);
-    if (!msg || !msg.data || !msg.data.id) {
-        logWithTimestamp('Received undefined earthquake data. Skipping.');
-        return;
-    }
+function connectSource() {
+    sourceSock = new SockJS(sourceUrl);
 
-    // Convert string timestamps to MongoDB Date objects
-    if (msg.data.properties) {
-        if (msg.data.properties.time) {
-            msg.data.properties.time = new Date(msg.data.properties.time);
-        }
-        if (msg.data.properties.lastupdate) {
-            msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
-        }
-    }
-
-    const id = msg.data.id;
-    logWithTimestamp(`Earthquake data received with ID ${id}`);
-    logWithTimestamp(`Time: ${msg.data.properties.time}`);
-    logWithTimestamp(`Region: ${msg.data.properties.flynn_region}`);
-    logWithTimestamp(`Magnitude: ${msg.data.properties.mag}`);
-
-    const filter = { "data.id": id };
-    const result = await mongoUtil.replaceDocumentOrCreateNew(
-        "EarthquakesData",
-        "Earthquake",
-        msg,
-        filter,
-        { upsert: true }
-    );
-
-    logWithTimestamp(
-        result.modifiedCount === 0
-            ? `Earthquake data with ID {${id}} created in MongoDB.`
-            : `Document with ID {${id}} updated in MongoDB.`
-    );
-
-    earthquakesList.add(id, msg);
-    await setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
-
-    const dataToSend = {
-        action: "sendMessage",
-        source: "relay-server",
-        message: earthquakesList.toJSONString()
+    sourceSock.onopen = () => {
+        logWithTimestamp(`Connected to source WebSocket: ${sourceUrl}`);
     };
 
-    if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
-        destinationSock.send(JSON.stringify(dataToSend));
-        logWithTimestamp('Data forwarded to destination WebSocket');
-    } else {
-        logWithTimestamp('Destination WebSocket is not connected, unable to forward data.');
-    }
-};
+    sourceSock.onmessage = async (e) => {
+        const msg = JSON.parse(e.data);
+        if (!msg || !msg.data || !msg.data.id) {
+            logWithTimestamp('Received undefined earthquake data. Skipping.');
+            return;
+        }
+
+        // Convert string timestamps to MongoDB Date objects
+        if (msg.data.properties) {
+            if (msg.data.properties.time) {
+                msg.data.properties.time = new Date(msg.data.properties.time);
+            }
+            if (msg.data.properties.lastupdate) {
+                msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
+            }
+        }
+
+        const id = msg.data.id;
+        logWithTimestamp(`Earthquake data received with ID ${id}`);
+        logWithTimestamp(`Time: ${msg.data.properties.time}`);
+        logWithTimestamp(`Region: ${msg.data.properties.flynn_region}`);
+        logWithTimestamp(`Magnitude: ${msg.data.properties.mag}`);
+
+        const filter = { "data.id": id };
+        const result = await mongoUtil.replaceDocumentOrCreateNew(
+            "EarthquakesData",
+            "Earthquake",
+            msg,
+            filter,
+            { upsert: true }
+        );
+
+        logWithTimestamp(
+            result.modifiedCount === 0
+                ? `Earthquake data with ID {${id}} created in MongoDB.`
+                : `Document with ID {${id}} updated in MongoDB.`
+        );
+
+        earthquakesList.add(id, msg);
+        await setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
+
+        const dataToSend = {
+            action: "sendMessage",
+            source: "relay-server",
+            message: earthquakesList.toJSONString()
+        };
+
+        if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
+            destinationSock.send(JSON.stringify(dataToSend));
+            logWithTimestamp('Data forwarded to destination WebSocket');
+        } else {
+            logWithTimestamp('Destination WebSocket is not connected, unable to forward data.');
+        }
+    };
 
 
-sourceSock.onclose = () => {
-    logWithTimestamp('Source WebSocket disconnected. Reconnecting...');
-    setTimeout(connectSource, reconnectInterval);
-};
+    sourceSock.onclose = () => {
+        logWithTimestamp('Source WebSocket disconnected. Reconnecting...');
+        setTimeout(connectSource, reconnectInterval);
+    };
 
-sourceSock.onerror = (error) => {
-    console.error(`${new Date().toISOString()} Source WebSocket encountered error:`, error);
-    sourceSock.close(); // Close to trigger reconnection
-};
-
+    sourceSock.onerror = (error) => {
+        console.error(`${new Date().toISOString()} Source WebSocket encountered error:`, error);
+        sourceSock.close(); // Close to trigger reconnection
+    };
+}
 
 // Connect to the destination WebSocket
 function connectDestination() {
