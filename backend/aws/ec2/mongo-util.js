@@ -15,20 +15,20 @@ module.exports = {
 
     getLastXDocuments: async function (database, collection, lastX) {
         try {
-
             const mongodbCollection = getCollection(database, collection);
-            // Find last 100 inserted documents
+
+            // Fetch last X documents sorted by `data.properties.time` in descending order
             const documents = await mongodbCollection.find({})
-                .sort({ _id: -1 }) // Sort by `_id` in descending order
-                .limit(100)         // Limit the result to 100 documents
+                .sort({ "data.properties.time": -1 }) // Sort by time (newest first)
+                .limit(lastX)  // Get the last X documents
                 .toArray();
 
-            //console.log("Last 100 documents:", documents);
             return documents;
         } catch (error) {
             console.log(error.message);
         }
     }
+
 }
 
 const getCollection = function (database, collection) {
