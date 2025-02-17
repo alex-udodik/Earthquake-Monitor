@@ -19,7 +19,7 @@ module.exports = {
 
             // Fetch last X documents sorted by `data.properties.time` in descending order
             const documents = await mongodbCollection.find({})
-                .sort({ "data.properties.time": 1 }) // Sort by time (newest first)
+                .sort({ "data.properties.time": -1 }) // Sort by time (newest first)
                 .limit(lastX)  // Get the last X documents
                 .toArray();
 
