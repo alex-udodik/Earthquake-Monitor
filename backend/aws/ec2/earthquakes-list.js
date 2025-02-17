@@ -18,26 +18,47 @@ class EarthquakesList {
     add(key, value) {
         let existingNode = this.findNodeByKey(key);
         if (existingNode) {
-            existingNode.details = value;
+            existingNode.details = value; // Update existing node
             return;
         }
 
         const newNode = new Node(key, value);
 
-        if (this.size === this.maxSize) {
-            this.removeTail();
-        }
-
+        // If the list is empty, set the new node as head and tail
         if (!this.head) {
-            this.head = newNode;
-            this.tail = newNode;
+            this.head = this.tail = newNode;
         } else {
-            newNode.next = this.head;
-            this.head.prev = newNode;
-            this.head = newNode;
+            // Insert in sorted order (newest first)
+            let current = this.head;
+            while (current && new Date(value.data.properties.time) < new Date(current.details.data.properties.time)) {
+                current = current.next;
+            }
+
+            if (!current) {
+                // Append at the end (oldest)
+                this.tail.next = newNode;
+                newNode.prev = this.tail;
+                this.tail = newNode;
+            } else if (current === this.head) {
+                // Insert at the beginning (newest)
+                newNode.next = this.head;
+                this.head.prev = newNode;
+                this.head = newNode;
+            } else {
+                // Insert in the middle
+                newNode.prev = current.prev;
+                newNode.next = current;
+                current.prev.next = newNode;
+                current.prev = newNode;
+            }
         }
 
         this.size++;
+
+        // Maintain max size of 100 by removing the oldest (tail) if necessary
+        if (this.size > this.maxSize) {
+            this.removeTail();
+        }
     }
 
     remove(key) {
@@ -67,9 +88,7 @@ class EarthquakesList {
     findNodeByKey(key) {
         let current = this.head;
         while (current) {
-            if (current.key === key) {
-                return current;
-            }
+            if (current.key === key) return current;
             current = current.next;
         }
         return null;
@@ -79,8 +98,7 @@ class EarthquakesList {
         if (!this.tail) return;
 
         if (this.tail === this.head) {
-            this.head = null;
-            this.tail = null;
+            this.head = this.tail = null;
         } else {
             this.tail = this.tail.prev;
             this.tail.next = null;
@@ -117,5 +135,4 @@ class EarthquakesList {
     }
 }
 
-// Export the class so it can be used in other files
 module.exports = EarthquakesList;
