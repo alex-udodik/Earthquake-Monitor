@@ -89,6 +89,6 @@ class _LatestEarthquakeCardState extends State<LatestEarthquakeCard> {
   void _playSound() async {
     // Use a local sound file or network URL for the sound
     // Here I'm using a local sound asset (make sure to add the sound file in your assets folder)
-    await _audioPlayer.play('assets/sounds/earthquake_alert.wav');
+    await _audioPlayer.play(AssetSource('assets/sounds/earthquake_alert.wav'));
   }
 }

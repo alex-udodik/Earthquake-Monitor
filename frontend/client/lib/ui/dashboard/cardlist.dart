@@ -83,7 +83,7 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
   }
 
   void _playSound() async {
-    await _audioPlayer.play('assets/sounds/earthquake_alert.wav');
+    await _audioPlayer.play(AssetSource('assets/sounds/earthquake_alert.wav'));
   }
 
   @override
