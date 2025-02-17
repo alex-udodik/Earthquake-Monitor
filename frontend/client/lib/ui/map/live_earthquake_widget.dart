@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:client/services/socket_provider.dart';
 import '../../models/earthquake.dart';
 import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class LiveEarthquakeWidget extends StatelessWidget {
   const LiveEarthquakeWidget({Key? key}) : super(key: key);
@@ -57,7 +58,8 @@ class LiveEarthquakeWidget extends StatelessWidget {
 
   Widget _earthquakeItem(Earthquake earthquake) {
     DateTime parsedTime = DateTime.parse(earthquake.data.properties.time);
-    String formattedTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedTime);
+    String relativeTime = timeago.format(parsedTime, locale: 'en');
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
@@ -69,7 +71,7 @@ class LiveEarthquakeWidget extends StatelessWidget {
                 color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
           ),
           Text(
-            formattedTime,
+            relativeTime, // ✅ Now shows "5 minutes ago"
             style: TextStyle(color: Colors.white60, fontSize: 10),
           ),
           Divider(color: Colors.white24),

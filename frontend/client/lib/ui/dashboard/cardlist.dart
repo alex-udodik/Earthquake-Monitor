@@ -132,9 +132,6 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
                           Text('Magnitude: ${earthquake.data.properties.mag}'),
                           Text('Depth: ${earthquake.data.properties.depth} km'),
                           Text('Time: ${formattedTime}'),
-                          Text(
-                            'Lat: ${earthquake.data.properties.lat}, Long: ${earthquake.data.properties.lon}',
-                          ),
                         ],
                       ),
                     ),
