@@ -190,11 +190,13 @@ async function setKeyValueRedis(key, val) {
 
 // Populate earthquakes list with initial data
 function populateEarthquakesList(documents) {
-    documents.reverse.forEach((doc) => {
+    for (let i = documents.length - 1; i >= 0; i--) {
+        let doc = documents[i];
         delete doc._id;
         earthquakesList.add(doc.data.id, doc);
-    });
+    }
 }
+
 
 // Start both WebSocket connections
 connectSource();
