@@ -1,12 +1,35 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:client/services/socket_provider.dart';
 import '../../models/earthquake.dart';
-import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class LiveEarthquakeWidget extends StatelessWidget {
+class LiveEarthquakeWidget extends StatefulWidget {
   const LiveEarthquakeWidget({Key? key}) : super(key: key);
+
+  @override
+  _LiveEarthquakeWidgetState createState() => _LiveEarthquakeWidgetState();
+}
+
+class _LiveEarthquakeWidgetState extends State<LiveEarthquakeWidget> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Auto-refresh the widget every 30 seconds
+    _timer = Timer.periodic(Duration(seconds: 10), (timer) {
+      setState(() {}); // Forces the widget to rebuild and update time
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Stop the timer when the widget is destroyed
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +40,7 @@ class LiveEarthquakeWidget extends StatelessWidget {
       bottom: 20,
       right: 20,
       child: Container(
-        width: 250, // Adjust width as needed
+        width: 250,
         padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.yellow.withOpacity(0.3),
@@ -39,11 +62,10 @@ class LiveEarthquakeWidget extends StatelessWidget {
             ),
             SizedBox(height: 10),
             Container(
-              height: 150, // Set a scrollable height
+              height: 150,
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount:
-                    earthquakes.length.clamp(0, 5), // Limit to 5 latest quakes
+                itemCount: earthquakes.length.clamp(0, 5),
                 itemBuilder: (context, index) {
                   final earthquake = earthquakes[index];
                   return _earthquakeItem(earthquake);
@@ -71,7 +93,7 @@ class LiveEarthquakeWidget extends StatelessWidget {
                 color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
           ),
           Text(
-            relativeTime, // ✅ Now shows "5 minutes ago"
+            relativeTime, // ✅ Updates automatically every 30 seconds
             style: TextStyle(color: Colors.white60, fontSize: 10),
           ),
           Divider(color: Colors.white24),

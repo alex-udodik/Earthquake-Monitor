@@ -10,110 +10,87 @@ const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
 const redis = require('redis');
-const redisClient = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379, keepAlive: true } });
-
-// Handle Redis client events
-redisClient.on('connect', () => {
-    logWithTimestamp('Connected to Redis');
+const redisClient = redis.createClient({
+    socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379, keepAlive: true }
 });
 
-redisClient.on('ready', () => {
-    logWithTimestamp('Redis client is ready');
-});
-
-redisClient.on('error', (err) => {
-    logWithTimestamp(console.error('Redis client error:', err));
-});
-
+// Handle Redis events
+redisClient.on('connect', () => logWithTimestamp('✅ Connected to Redis'));
+redisClient.on('ready', () => logWithTimestamp('✅ Redis client is ready'));
+redisClient.on('error', (err) => logWithTimestamp(`❌ Redis error: ${err}`));
 redisClient.on('end', () => {
-    logWithTimestamp('Redis connection closed. Attempting to reconnect...');
-    setTimeout(() => client.connect(), reconnectInterval);
+    logWithTimestamp('⚠️ Redis connection closed. Reconnecting...');
+    setTimeout(() => redisClient.connect(), reconnectInterval);
 });
 
 let sourceSock;
 let destinationSock;
 let heartbeatInterval;
-
 const earthquakesList = new EarthquakesList();
 
-// Log current timestamp in ISO format for each event
+// Log function with timestamps
 function logWithTimestamp(message) {
-    const now = new Date();  // Get the current timestamp each time you log
-    console.log(`${now.toISOString()} ${message}`);
+    console.log(`${new Date().toISOString()} ${message}`);
 }
 
-// Connect to the source WebSocket using SockJS (SeismicPortal)
+// Connect to the source WebSocket (Seismic Portal)
 function connectSource() {
     sourceSock = new SockJS(sourceUrl);
 
-    sourceSock.onopen = () => {
-        logWithTimestamp(`Connected to source WebSocket: ${sourceUrl}`);
-    };
+    sourceSock.onopen = () => logWithTimestamp(`🔗 Connected to source WebSocket: ${sourceUrl}`);
 
     sourceSock.onmessage = async (e) => {
         const msg = JSON.parse(e.data);
         if (!msg || !msg.data || !msg.data.id) {
-            logWithTimestamp('Received undefined earthquake data. Skipping.');
+            logWithTimestamp('⚠️ Received undefined earthquake data. Skipping.');
             return;
         }
 
-        // Convert string timestamps to MongoDB Date objects
+        // Convert timestamps to Date objects
         if (msg.data.properties) {
-            if (msg.data.properties.time) {
-                msg.data.properties.time = new Date(msg.data.properties.time);
-            }
-            if (msg.data.properties.lastupdate) {
-                msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
-            }
+            if (msg.data.properties.time) msg.data.properties.time = new Date(msg.data.properties.time);
+            if (msg.data.properties.lastupdate) msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
         }
 
         const id = msg.data.id;
-        logWithTimestamp(`Earthquake data received with ID ${id}`);
-        logWithTimestamp(`Time: ${msg.data.properties.time}`);
-        logWithTimestamp(`Region: ${msg.data.properties.flynn_region}`);
-        logWithTimestamp(`Magnitude: ${msg.data.properties.mag}`);
+        logWithTimestamp(`🌍 Earthquake received: ID ${id} | Region: ${msg.data.properties.flynn_region} | Mag: ${msg.data.properties.mag}`);
 
         const filter = { "data.id": id };
-        const result = await mongoUtil.replaceDocumentOrCreateNew(
-            "EarthquakesData",
-            "Earthquake",
-            msg,
-            filter,
-            { upsert: true }
-        );
+        const updateData = { $set: msg };
+        const options = { upsert: true };
 
-        logWithTimestamp(
-            result.modifiedCount === 0
-                ? `Earthquake data with ID {${id}} created in MongoDB.`
-                : `Document with ID {${id}} updated in MongoDB.`
-        );
+        const result = await mongoUtil.updateDocument("EarthquakesData", "Earthquake", filter, updateData, options);
 
+        if (result.upsertedId) {
+            logWithTimestamp(`🆕 New earthquake inserted: ID ${id}`);
+        } else if (result.modifiedCount > 0) {
+            logWithTimestamp(`✅ Earthquake updated: ID ${id}`);
+        } else {
+            logWithTimestamp(`⚠️ No changes detected for ID ${id}`);
+        }
+
+        // Always update Redis (for both new & updated earthquakes)
         earthquakesList.add(id, msg);
         await setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
 
-        const dataToSend = {
-            action: "sendMessage",
-            source: "relay-server",
-            message: earthquakesList.toJSONString()
-        };
+        const dataToSend = { action: "sendMessage", source: "relay-server", message: earthquakesList.toJSONString() };
 
         if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
             destinationSock.send(JSON.stringify(dataToSend));
-            logWithTimestamp('Data forwarded to destination WebSocket');
+            logWithTimestamp('📤 Data forwarded to destination WebSocket');
         } else {
-            logWithTimestamp('Destination WebSocket is not connected, unable to forward data.');
+            logWithTimestamp('❌ Destination WebSocket not connected');
         }
     };
 
-
     sourceSock.onclose = () => {
-        logWithTimestamp('Source WebSocket disconnected. Reconnecting...');
+        logWithTimestamp('⚠️ Source WebSocket disconnected. Reconnecting...');
         setTimeout(connectSource, reconnectInterval);
     };
 
     sourceSock.onerror = (error) => {
-        console.error(`${new Date().toISOString()} Source WebSocket encountered error:`, error);
-        sourceSock.close(); // Close to trigger reconnection
+        logWithTimestamp(`❌ Source WebSocket error: ${error.message}`);
+        if (sourceSock.readyState !== WebSocket.CLOSED) sourceSock.close();
     };
 }
 
@@ -121,74 +98,56 @@ function connectSource() {
 function connectDestination() {
     destinationSock = new WebSocket(destinationUrl);
 
-    const dataToSend = {
-        action: "ping",
-        source: "relay-server",
-        message: "ping to keep server alive"
-    };
+    const dataToSend = { action: "ping", source: "relay-server", message: "ping to keep server alive" };
 
     destinationSock.on('open', () => {
-        logWithTimestamp(`Connected to destination WebSocket: ${destinationUrl}`);
-
+        logWithTimestamp(`🔗 Connected to destination WebSocket: ${destinationUrl}`);
         clearInterval(heartbeatInterval);
         heartbeatInterval = setInterval(() => {
             if (destinationSock.readyState === WebSocket.OPEN) {
                 destinationSock.send(JSON.stringify(dataToSend));
-                logWithTimestamp('Sent heartbeat (ping)');
+                logWithTimestamp('💓 Sent heartbeat');
             }
-        }, 30000); // Send every 30 seconds
-    });
-
-    destinationSock.on('message', (data) => {
-        const message = JSON.parse(data);
-        if (message.action === 'ping') {
-            logWithTimestamp(`Received message from server: ${message.message}`);
-        }
-
-        //TODO filter out broadcast messages from websocket that come back through here
+        }, 30000);
     });
 
     destinationSock.on('close', () => {
-        logWithTimestamp('Destination WebSocket disconnected. Reconnecting...');
+        logWithTimestamp('⚠️ Destination WebSocket disconnected. Reconnecting...');
         clearInterval(heartbeatInterval);
         setTimeout(connectDestination, reconnectInterval);
     });
 
     destinationSock.on('error', (error) => {
-        console.error(`${new Date().toISOString()} Destination WebSocket encountered error:`, error);
-        destinationSock.close(); // Close to trigger reconnection
+        logWithTimestamp(`❌ Destination WebSocket error: ${error.message}`);
+        if (destinationSock.readyState !== WebSocket.CLOSED) destinationSock.close();
     });
 }
 
-// Set a key/value pair in Redis
+// Store key-value pair in Redis
 async function setKeyValueRedis(key, val) {
     try {
         await redisClient.set(key, val);
-        logWithTimestamp('Key set in Redis successfully');
+        logWithTimestamp('✅ Key set in Redis');
     } catch (error) {
-        console.error('Error setting key/value in Redis:', error);
+        logWithTimestamp(`❌ Redis set error: ${error}`);
     }
 }
 
-// Initialize MongoDB connection
+// Initialize MongoDB & Redis
 (async () => {
     try {
-        await redisClient.connect()
-            .then(() => logWithTimestamp('Connected to Redis asynchronously'))
-            .catch((err) => console.error('Redis connection error:', err));
-
+        await redisClient.connect();
         const mongodb = MongodbSingleton.getInstance();
         await mongodb.connect();
         const last100Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 100);
-
         populateEarthquakesList(last100Earthquakes);
         setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
     } catch (error) {
-        logWithTimestamp(`MongoDB connection error: ${error}`);
+        logWithTimestamp(`❌ MongoDB connection error: ${error}`);
     }
 })();
 
-// Populate earthquakes list with initial data
+// Populate earthquakes list
 function populateEarthquakesList(documents) {
     for (let i = documents.length - 1; i >= 0; i--) {
         let doc = documents[i];
@@ -197,7 +156,6 @@ function populateEarthquakesList(documents) {
     }
 }
 
-
-// Start both WebSocket connections
+// Start WebSocket connections
 connectSource();
 connectDestination();
