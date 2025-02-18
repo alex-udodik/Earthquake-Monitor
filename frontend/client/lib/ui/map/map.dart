@@ -88,8 +88,50 @@ class _MapScreenState extends State<MapScreen> {
 
           // Magnitude Legend
           EarthquakeLegend(),
+
+          // ✅ Floating Filter Button (New)
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton(
+              backgroundColor: Colors.blueAccent,
+              onPressed: () {
+                _showFilterModal(context);
+              },
+              child: Icon(Icons.filter_list, color: Colors.white),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  // Show the Earthquake Filter Modal
+  void _showFilterModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.grey[900],
+      builder: (context) {
+        return EarthquakeFilterModal(
+          onApplyFilters: (double minMag, double maxMag, double minD,
+              double maxD, double time) {
+            setState(() {
+              minMagnitude = minMag;
+              maxMagnitude = maxMag;
+              minDepth = minD;
+              maxDepth = maxD;
+              timeRange = time;
+            });
+            // Apply filtering logic
+            _updateMarkers(Provider.of<SocketProvider>(context, listen: false)
+                .earthquakes);
+          },
+        );
+      },
     );
   }
 
@@ -101,16 +143,25 @@ class _MapScreenState extends State<MapScreen> {
   void _updateMarkers(List<Earthquake> earthquakes) {
     _markers.clear();
     for (final earthquake in earthquakes) {
-      final marker = Marker(
-        point: LatLng(
-            earthquake.data.properties.lat, earthquake.data.properties.lon),
-        width: 100.0,
-        height: 100.0,
-        builder: (ctx) => PulsatingMarker(
-          magnitude: earthquake.data.properties.mag,
-        ),
-      );
-      _markers[earthquake.data.id] = marker;
+      double magnitude = earthquake.data.properties.mag;
+      double depth = earthquake.data.properties.depth;
+
+      // ✅ Apply filtering logic
+      if (magnitude >= minMagnitude &&
+          magnitude <= maxMagnitude &&
+          depth >= minDepth &&
+          depth <= maxDepth) {
+        final marker = Marker(
+          point: LatLng(
+              earthquake.data.properties.lat, earthquake.data.properties.lon),
+          width: 100.0,
+          height: 100.0,
+          builder: (ctx) => PulsatingMarker(
+            magnitude: magnitude,
+          ),
+        );
+        _markers[earthquake.data.id] = marker;
+      }
     }
     setState(() {});
   }

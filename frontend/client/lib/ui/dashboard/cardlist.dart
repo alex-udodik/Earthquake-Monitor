@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../models/earthquake.dart';
 import 'package:client/services/socket_provider.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class EarthquakeCardList extends StatefulWidget {
   final void Function(LatLng) onCardTap; // Callback function
@@ -19,11 +20,25 @@ class EarthquakeCardList extends StatefulWidget {
 class _EarthquakeCardListState extends State<EarthquakeCardList> {
   late AudioPlayer _audioPlayer;
   int? _newEarthquakeIndex; // Track the latest earthquake index
+  Timer? _timer; // Timer for periodic updates
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+
+    // ✅ Auto-refresh the widget every 10 seconds (sync with LiveEarthquakeWidget)
+    _timer = Timer.periodic(Duration(seconds: 10), (timer) {
+      setState(
+          () {}); // Forces the widget to rebuild and update time dynamically
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Stop the timer when the widget is destroyed
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   @override
@@ -62,16 +77,16 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
           width: double.infinity,
           padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.cyan.shade700, // Light red background
-            borderRadius: BorderRadius.circular(12), // Rounded borders
+            color: Colors.cyan.shade700,
+            borderRadius: BorderRadius.circular(12),
           ),
-          margin: EdgeInsets.all(8), // Adds spacing around the header
+          margin: EdgeInsets.all(8),
           child: Text(
             "Last 100 Earthquakes",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.black, // Text in black for contrast
+              color: Colors.black,
             ),
             textAlign: TextAlign.center,
           ),
@@ -80,14 +95,21 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
         // List of Earthquakes
         Expanded(
           child: ListView.builder(
-            itemCount: earthquakes.length
-                .clamp(0, 100), // Limit to last 100 earthquakes
+            itemCount: earthquakes.length.clamp(0, 100),
             itemBuilder: (context, index) {
               final earthquake = earthquakes[index];
+
+              // Convert time to local timezone
               DateTime parsedTime =
-                  DateTime.parse(earthquake.data.properties.time);
-              String formattedTime =
-                  DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedTime);
+                  DateTime.parse(earthquake.data.properties.time).toLocal();
+              DateTime lastUpdateTime =
+                  DateTime.parse(earthquake.data.properties.lastUpdate)
+                      .toLocal();
+
+              // ✅ Use timeago to format relative time (syncs with LiveEarthquakeWidget)
+              String relativeTime = timeago.format(parsedTime, locale: 'en');
+              String lastUpdateFormatted =
+                  timeago.format(lastUpdateTime, locale: 'en');
 
               return GestureDetector(
                 onTap: () {
@@ -131,7 +153,10 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
                           SizedBox(height: 8),
                           Text('Magnitude: ${earthquake.data.properties.mag}'),
                           Text('Depth: ${earthquake.data.properties.depth} km'),
-                          Text('Time: ${formattedTime}'),
+                          Text(
+                              'Occurred: $relativeTime'), // ✅ Auto-updating "X mins ago"
+                          Text(
+                              'Last Updated: $lastUpdateFormatted'), // ✅ Auto-updating "X mins ago"
                         ],
                       ),
                     ),
@@ -169,11 +194,5 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
 
   void _playSound() async {
     await _audioPlayer.play(AssetSource('assets/sounds/earthquake_alert.wav'));
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
   }
 }
