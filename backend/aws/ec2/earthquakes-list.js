@@ -8,7 +8,7 @@ class Node {
 }
 
 class EarthquakesList {
-    constructor(maxSize = 100) {
+    constructor(maxSize) {
         this.maxSize = maxSize;
         this.size = 0;
         this.head = null;

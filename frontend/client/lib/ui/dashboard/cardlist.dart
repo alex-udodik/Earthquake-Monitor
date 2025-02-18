@@ -21,6 +21,16 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
   late AudioPlayer _audioPlayer;
   int? _newEarthquakeIndex; // Track the latest earthquake index
   Timer? _timer; // Timer for periodic updates
+  int _filterIndex = 0; // Index for current filter selection
+
+  // ✅ Filter Options List
+  final List<Map<String, dynamic>> _filters = [
+    {"label": "Last 100", "value": 100},
+    {"label": "Last 1000", "value": 1000},
+    {"label": "Last 24h", "value": Duration(hours: 24)},
+    {"label": "Last 7 Days", "value": Duration(days: 7)},
+    {"label": "Last 30 Days", "value": Duration(days: 30)},
+  ];
 
   @override
   void initState() {
@@ -41,6 +51,17 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
     super.dispose();
   }
 
+  void _changeFilter(bool isNext) {
+    setState(() {
+      if (isNext) {
+        _filterIndex = (_filterIndex + 1) % _filters.length; // Cycle forward
+      } else {
+        _filterIndex = (_filterIndex - 1 + _filters.length) %
+            _filters.length; // Cycle backward
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final socketProvider = Provider.of<SocketProvider>(context);
@@ -57,8 +78,6 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
           _newEarthquakeIndex = 0; // Highlight the top card
         });
 
-        _playSound();
-
         // Remove the highlight after 1 second
         Future.delayed(Duration(seconds: 1), () {
           setState(() {
@@ -72,7 +91,7 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
 
     return Column(
       children: [
-        // Sticky Header
+        // 🔹 Header with Filter Rotation Buttons
         Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -81,18 +100,36 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
             borderRadius: BorderRadius.circular(12),
           ),
           margin: EdgeInsets.all(8),
-          child: Text(
-            "Last 100 Earthquakes",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-            textAlign: TextAlign.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Left Arrow Button
+              IconButton(
+                icon: Icon(Icons.arrow_left, color: Colors.black, size: 24),
+                onPressed: () => _changeFilter(false),
+              ),
+
+              // Filter Text
+              Text(
+                _filters[_filterIndex]["label"],
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              // Right Arrow Button
+              IconButton(
+                icon: Icon(Icons.arrow_right, color: Colors.black, size: 24),
+                onPressed: () => _changeFilter(true),
+              ),
+            ],
           ),
         ),
 
-        // List of Earthquakes
+        // 🔹 List of Earthquakes
         Expanded(
           child: ListView.builder(
             itemCount: earthquakes.length.clamp(0, 100),
@@ -185,10 +222,8 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
       Colors.brown, // 10.0
     ];
 
-    // Determine index based on whole number magnitude tiers
     int index =
         (normalizedMagnitude.floor()).clamp(0, gradientColors.length - 1);
-
     return gradientColors[index];
   }
 

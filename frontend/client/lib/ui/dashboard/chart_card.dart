@@ -35,7 +35,7 @@ class ChartCard extends StatelessWidget {
                         FlSpot(3, 3.4),
                       ],
                       isCurved: true,
-                      colors: [Colors.blue],
+                      gradient: LinearGradient(colors: [Colors.blue]),
                     ),
                   ],
                 ),

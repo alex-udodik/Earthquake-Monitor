@@ -26,7 +26,7 @@ redisClient.on('end', () => {
 let sourceSock;
 let destinationSock;
 let heartbeatInterval;
-const earthquakesList = new EarthquakesList();
+const earthquakesListLast100 = new EarthquakesList(100);
 
 // Log function with timestamps
 function logWithTimestamp(message) {
@@ -70,10 +70,10 @@ function connectSource() {
         }
 
         // Always update Redis (for both new & updated earthquakes)
-        earthquakesList.add(id, msg);
-        await setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
+        earthquakesListLast100.add(id, msg);
+        await setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
 
-        const dataToSend = { action: "sendMessage", source: "relay-server", message: earthquakesList.toJSONString() };
+        const dataToSend = { action: "sendMessage", source: "relay-server", message: earthquakesListLast100.toJSONString() };
 
         if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
             destinationSock.send(JSON.stringify(dataToSend));
@@ -141,7 +141,7 @@ async function setKeyValueRedis(key, val) {
         await mongodb.connect();
         const last100Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 100);
         populateEarthquakesList(last100Earthquakes);
-        setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
+        setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
     } catch (error) {
         logWithTimestamp(`❌ MongoDB connection error: ${error}`);
     }
@@ -152,7 +152,7 @@ function populateEarthquakesList(documents) {
     for (let i = documents.length - 1; i >= 0; i--) {
         let doc = documents[i];
         delete doc._id;
-        earthquakesList.add(doc.data.id, doc);
+        earthquakesListLast100.add(doc.data.id, doc);
     }
 }
 
