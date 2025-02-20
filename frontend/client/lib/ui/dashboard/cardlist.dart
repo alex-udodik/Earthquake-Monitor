@@ -183,7 +183,7 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Location: ${earthquake.data.properties.flynnRegion}',
+                            '${earthquake.data.properties.flynnRegion}',
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.bold),
                           ),

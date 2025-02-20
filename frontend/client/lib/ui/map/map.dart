@@ -5,11 +5,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:client/services/socket_provider.dart';
 import '../../models/earthquake.dart';
 import 'pulsating_marker.dart';
-import 'earthquake_filter_modal.dart';
 import 'earthquake_info_panel.dart';
 import 'earthquake_legend.dart';
-import 'location_search.dart';
 import 'live_earthquake_widget.dart'; // Import the Live Widget
+import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 
 class MapScreen extends StatefulWidget {
   final MapController mapController;
@@ -79,9 +78,6 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
-
-          // Location Search Bar
-          LocationSearch(mapController: widget.mapController),
 
           // Live Earthquake Widget (Only in Live View)
           if (widget.isLive) LiveEarthquakeWidget(),
