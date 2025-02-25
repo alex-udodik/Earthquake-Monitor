@@ -76,6 +76,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/.env
     - assets/sounds/earthquake_alert.wav
   # To add assets to your application, add an assets section, like this:

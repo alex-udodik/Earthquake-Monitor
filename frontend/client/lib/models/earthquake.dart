@@ -93,12 +93,13 @@ class Properties {
       lastUpdate: json['lastupdate'],
       time: json['time'],
       flynnRegion: json['flynn_region'],
-      lat: json['lat'],
-      lon: json['lon'],
-      depth: json['depth'],
+      lat: (json['lat'] as num).toDouble(), // ✅ Ensures conversion to double
+      lon: (json['lon'] as num).toDouble(), // ✅ Ensures conversion to double
+      depth:
+          (json['depth'] as num).toDouble(), // ✅ Ensures conversion to double
       evType: json['evtype'],
       auth: json['auth'],
-      mag: json['mag'],
+      mag: (json['mag'] as num).toDouble(), // ✅ Ensures conversion to double
       magType: json['magtype'],
       unid: json['unid'],
     );

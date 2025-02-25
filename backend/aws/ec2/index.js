@@ -27,6 +27,7 @@ let sourceSock;
 let destinationSock;
 let heartbeatInterval;
 const earthquakesListLast100 = new EarthquakesList(100);
+const earthquakesListLast1000 = new EarthquakesList(1000);
 
 // Log function with MongoDB logging
 async function logWithTimestamp(message, isError = false) {
@@ -94,8 +95,13 @@ function connectSource() {
                 logWithTimestamp(`⚠️ No changes detected for ID ${id}`);
             }
 
+            // Add earthquake to both last 100 and last 1000 lists
             earthquakesListLast100.add(id, msg);
+            earthquakesListLast1000.add(id, msg);
+
+            // Store them in Redis using setKeyValueRedis
             await setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
+            await setKeyValueRedis("last1000earthquakes", earthquakesListLast1000.toJSONString());
 
             const dataToSend = { action: "sendMessage", source: "relay-server", message: earthquakesListLast100.toJSONString() };
 
@@ -150,11 +156,11 @@ function connectDestination() {
     });
 }
 
-// Store key-value pair in Redis
+// Store key-value pair in Redis (Unchanged)
 async function setKeyValueRedis(key, val) {
     try {
         await redisClient.set(key, val);
-        logWithTimestamp('✅ Key set in Redis');
+        logWithTimestamp(`✅ Key "${key}" set in Redis`);
     } catch (error) {
         logWithTimestamp(`❌ Redis set error: ${error}`, true);
     }
@@ -166,22 +172,20 @@ async function setKeyValueRedis(key, val) {
         await redisClient.connect();
         const mongodb = MongodbSingleton.getInstance();
         await mongodb.connect();
+
+        // Load last 100 and last 1000 earthquakes from MongoDB
         const last100Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 100);
-        populateEarthquakesList(last100Earthquakes);
-        setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
+        const last1000Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 1000);
+
+        last100Earthquakes.forEach(doc => earthquakesListLast100.add(doc.data.id, doc));
+        last1000Earthquakes.forEach(doc => earthquakesListLast1000.add(doc.data.id, doc));
+
+        await setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
+        await setKeyValueRedis("last1000earthquakes", earthquakesListLast1000.toJSONString());
     } catch (error) {
         logWithTimestamp(`❌ MongoDB connection error: ${error}`, true);
     }
 })();
-
-// Populate earthquakes list
-function populateEarthquakesList(documents) {
-    for (let i = documents.length - 1; i >= 0; i--) {
-        let doc = documents[i];
-        delete doc._id;
-        earthquakesListLast100.add(doc.data.id, doc);
-    }
-}
 
 // Start WebSocket connections
 connectSource();
