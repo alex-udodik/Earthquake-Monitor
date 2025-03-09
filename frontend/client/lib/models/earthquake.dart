@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:json_annotation/json_annotation.dart';
@@ -69,6 +68,10 @@ class Properties {
   double mag;
   String magType;
   String unid;
+  String displayName; // New field for location name
+  String state; // New field for state/region
+  String country; // New field for country
+  String countryCode; // New field for country code
 
   Properties({
     required this.sourceId,
@@ -84,6 +87,10 @@ class Properties {
     required this.mag,
     required this.magType,
     required this.unid,
+    required this.displayName, // New field
+    required this.state, // New field
+    required this.country, // New field
+    required this.countryCode, // New field
   });
 
   factory Properties.fromJson(Map<String, dynamic> json) {
@@ -102,6 +109,10 @@ class Properties {
       mag: (json['mag'] as num).toDouble(), // ✅ Ensures conversion to double
       magType: json['magtype'],
       unid: json['unid'],
+      displayName: json['display_name'] ?? "Unknown", // Handle null safety
+      state: json['state'] ?? "Unknown", // Handle null safety
+      country: json['country'] ?? "Unknown", // Handle null safety
+      countryCode: json['country_code'] ?? "Unknown", // Handle null safety
     );
   }
 }

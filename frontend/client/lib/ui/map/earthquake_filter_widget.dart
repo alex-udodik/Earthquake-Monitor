@@ -152,6 +152,15 @@ class _EarthquakeFilterWidgetState extends State<EarthquakeFilterWidget> {
                     );
                     Navigator.pop(context);
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue, // Change background color
+                    foregroundColor: Colors.white, // Change text color
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12), // Padding
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8), // Rounded corners
+                    ),
+                  ),
                   child: const Text("Apply"),
                 ),
               ],
