@@ -4,6 +4,7 @@ const MongodbSingleton = require('./mongob-singleton');
 const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
 const EarthquakesList = require('./earthquakes-list');
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const reconnectInterval = 2000; // 2 seconds delay before reconnecting
 const sourceUrl = 'https://www.seismicportal.eu/standing_order';
@@ -38,6 +39,31 @@ async function logWithTimestamp(message, isError = false) {
         await logErrorToMongoDB(timestamp, message);
     }
 }
+
+// OpenStreetMap API function to fetch location details
+async function getLocationInfo(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`;
+
+    try {
+        const response = await fetch(url, { headers: { "User-Agent": "earthquake-app" } });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        const data = await response.json();
+
+        if (data && data.address) {
+            return {
+                display_name: data.display_name || "Unknown",
+                state: data.address.state || "Unknown",
+                country: data.address.country || "Unknown",
+                country_code: data.address.country_code || "Unknown"
+            };
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching location for ${lat}, ${lon}:`, error.message);
+    }
+
+    return { display_name: "Unknown", state: "Unknown", country: "Unknown", country_code: "Unknown" };
+}
+
 
 // Function to log errors into MongoDB
 async function logErrorToMongoDB(timestamp, message) {
@@ -79,6 +105,21 @@ function connectSource() {
             }
 
             const id = msg.data.id;
+            const { lat, lon } = msg.data.properties;
+
+            if (lat && lon) {
+                // Fetch location info using OpenStreetMap API
+                const { display_name, state, country, country_code } = await getLocationInfo(lat, lon);
+
+                // Add location details to the earthquake object
+                msg.data.properties.display_name = display_name;
+                msg.data.properties.state = state;
+                msg.data.properties.country = country;
+                msg.data.properties.country_code = country_code;
+            } else {
+                logWithTimestamp(`⚠️ Missing lat/lon for earthquake ID ${id}`);
+            }
+
             logWithTimestamp(`🌍 Earthquake received: ID ${id} | Region: ${msg.data.properties.flynn_region} | Mag: ${msg.data.properties.mag}`);
 
             const filter = { "data.id": id };
@@ -115,6 +156,7 @@ function connectSource() {
             logWithTimestamp(`❌ Source WebSocket processing error: ${error.message}`, true);
         }
     };
+
 
     sourceSock.onclose = () => {
         logWithTimestamp('⚠️ Source WebSocket disconnected. Reconnecting...');
