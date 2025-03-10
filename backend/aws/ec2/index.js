@@ -40,6 +40,33 @@ async function logWithTimestamp(message, isError = false) {
     }
 }
 
+// Function to get region & subregion using Restcountries API
+async function getRegionInfo(country) {
+    if (!country || country === "Unknown") {
+        return { region: "Unknown", subregion: "Unknown" }; // Ensure "Unknown" values
+    }
+
+    const url = `https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fields=region,subregion`;
+
+    try {
+        const response = await fetch(url, { headers: { "User-Agent": "earthquake-app" } });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        const data = await response.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+            return {
+                region: data[0].region || "Unknown",
+                subregion: data[0].subregion || "Unknown"
+            };
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching region for ${country}:`, error.message);
+    }
+
+    return { region: "Unknown", subregion: "Unknown" }; // Default if lookup fails
+}
+
+
 // OpenStreetMap API function to fetch location details
 async function getLocationInfo(lat, lon) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`;
@@ -116,11 +143,18 @@ function connectSource() {
                 msg.data.properties.state = state;
                 msg.data.properties.country = country;
                 msg.data.properties.country_code = country_code;
+
+                // Fetch region & subregion using Restcountries API
+                const { region, subregion } = await getRegionInfo(country);
+                msg.data.properties.region = region;
+                msg.data.properties.subregion = subregion;
             } else {
                 logWithTimestamp(`⚠️ Missing lat/lon for earthquake ID ${id}`);
+                msg.data.properties.region = "Unknown";
+                msg.data.properties.subregion = "Unknown";
             }
 
-            logWithTimestamp(`🌍 Earthquake received: ID ${id} | Region: ${msg.data.properties.flynn_region} | Mag: ${msg.data.properties.mag}`);
+            logWithTimestamp(`🌍 Earthquake received: ID ${id} | Country: ${msg.data.properties.country} | Region: ${msg.data.properties.region} | Mag: ${msg.data.properties.mag}`);
 
             const filter = { "data.id": id };
             const updateData = { $set: msg };
@@ -156,6 +190,7 @@ function connectSource() {
             logWithTimestamp(`❌ Source WebSocket processing error: ${error.message}`, true);
         }
     };
+
 
 
     sourceSock.onclose = () => {
