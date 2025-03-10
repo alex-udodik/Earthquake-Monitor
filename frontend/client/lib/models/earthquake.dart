@@ -68,10 +68,12 @@ class Properties {
   double mag;
   String magType;
   String unid;
-  String displayName; // New field for location name
-  String state; // New field for state/region
-  String country; // New field for country
-  String countryCode; // New field for country code
+  String displayName; // Location name
+  String state; // State/region
+  String country; // Country
+  String countryCode; // Country code
+  String region; // New field for continent
+  String subregion; // New field for subregion
 
   Properties({
     required this.sourceId,
@@ -87,10 +89,12 @@ class Properties {
     required this.mag,
     required this.magType,
     required this.unid,
-    required this.displayName, // New field
-    required this.state, // New field
-    required this.country, // New field
-    required this.countryCode, // New field
+    required this.displayName, // Location name
+    required this.state, // State/region
+    required this.country, // Country
+    required this.countryCode, // Country code
+    required this.region, // New field
+    required this.subregion, // New field
   });
 
   factory Properties.fromJson(Map<String, dynamic> json) {
@@ -113,6 +117,8 @@ class Properties {
       state: json['state'] ?? "Unknown", // Handle null safety
       country: json['country'] ?? "Unknown", // Handle null safety
       countryCode: json['country_code'] ?? "Unknown", // Handle null safety
+      region: json['region'] ?? "Unknown", // ✅ New field (continent)
+      subregion: json['subregion'] ?? "Unknown", // ✅ New field (subregion)
     );
   }
 }

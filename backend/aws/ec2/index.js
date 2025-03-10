@@ -40,33 +40,6 @@ async function logWithTimestamp(message, isError = false) {
     }
 }
 
-// Function to get region & subregion using Restcountries API
-async function getRegionInfo(country) {
-    if (!country || country === "Unknown") {
-        return { region: "Unknown", subregion: "Unknown" }; // Ensure "Unknown" values
-    }
-
-    const url = `https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fields=region,subregion`;
-
-    try {
-        const response = await fetch(url, { headers: { "User-Agent": "earthquake-app" } });
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-        const data = await response.json();
-
-        if (Array.isArray(data) && data.length > 0) {
-            return {
-                region: data[0].region || "Unknown",
-                subregion: data[0].subregion || "Unknown"
-            };
-        }
-    } catch (error) {
-        console.error(`❌ Error fetching region for ${country}:`, error.message);
-    }
-
-    return { region: "Unknown", subregion: "Unknown" }; // Default if lookup fails
-}
-
-
 // OpenStreetMap API function to fetch location details
 async function getLocationInfo(lat, lon) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`;
@@ -89,6 +62,31 @@ async function getLocationInfo(lat, lon) {
     }
 
     return { display_name: "Unknown", state: "Unknown", country: "Unknown", country_code: "Unknown" };
+}
+async function getRegionInfo(country) {
+    if (!country || country === "Unknown") {
+        return { region: "Unknown", subregion: "Unknown" }; // Ensure "Unknown" values
+    }
+
+    const url = `https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fields=region,subregion`;
+
+    try {
+        console.log(`🌍 Fetching region for country: ${country}`);
+        const response = await fetch(url, { headers: { "User-Agent": "earthquake-app" } });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+            return {
+                region: data[0].region || "Unknown",
+                subregion: data[0].subregion || "Unknown"
+            };
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching region for ${country}:`, error.message);
+    }
+
+    return { region: "Unknown", subregion: "Unknown" }; // Default if lookup fails
 }
 
 
@@ -145,7 +143,7 @@ function connectSource() {
                 msg.data.properties.country_code = country_code;
 
                 // Fetch region & subregion using Restcountries API
-                const { region, subregion } = await getRegionInfo(country);
+                const { region, subregion } = country !== "Unknown" ? await getRegionInfo(country) : { region: "Unknown", subregion: "Unknown" };
                 msg.data.properties.region = region;
                 msg.data.properties.subregion = subregion;
             } else {
