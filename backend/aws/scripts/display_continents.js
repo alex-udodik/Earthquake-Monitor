@@ -30,8 +30,8 @@ async function getRegionInfo(country) {
     return { region: "Unknown", subregion: "Unknown" };
 }
 
-// Function to update MongoDB with region & subregion info
-async function updateEarthquakeRegions() {
+// Function to fetch and display region & subregion (WITHOUT updating MongoDB)
+async function displayEarthquakeRegions() {
     try {
         await client.connect();
         const db = client.db(DB_NAME);
@@ -42,9 +42,9 @@ async function updateEarthquakeRegions() {
             "data.properties.region": { $exists: false }
         }).toArray();
         const totalDocs = earthquakes.length;
-        let updatedCount = 0;
+        let processedCount = 0;
 
-        console.log(`🔍 Found ${totalDocs} earthquakes missing region data...\n`);
+        console.log(`🔍 Processing ${totalDocs} earthquakes missing region data...\n`);
 
         for (const earthquake of earthquakes) {
             const { country } = earthquake.data.properties;
@@ -55,22 +55,16 @@ async function updateEarthquakeRegions() {
 
             const { region, subregion } = await getRegionInfo(country);
 
-            // Update MongoDB with region & subregion
-            await collection.updateOne(
-                { _id: earthquake._id },
-                {
-                    $set: {
-                        "data.properties.region": region,
-                        "data.properties.subregion": subregion
-                    }
-                }
-            );
+            // Display results without modifying MongoDB
+            console.log(`🌍 ${earthquake.data.id}: ${country}`);
+            console.log(`   - Region: ${region}`);
+            console.log(`   - Subregion: ${subregion}`);
+            console.log("------------------------------------------------");
 
-            console.log(`✅ Updated ${earthquake.data.id}: ${country} → ${region}, ${subregion}`);
-            updatedCount++;
+            processedCount++;
         }
 
-        console.log(`\n✅ Done! Updated ${updatedCount} out of ${totalDocs} records.`);
+        console.log(`\n✅ Done! Processed ${processedCount} out of ${totalDocs} records.`);
     } catch (error) {
         console.error("❌ MongoDB Error:", error.message);
     } finally {
@@ -78,5 +72,5 @@ async function updateEarthquakeRegions() {
     }
 }
 
-// Run the update function (MODIFIES MongoDB)
-updateEarthquakeRegions();
+// Run the test function (DOES NOT modify MongoDB)
+displayEarthquakeRegions();
