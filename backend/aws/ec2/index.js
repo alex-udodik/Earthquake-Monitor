@@ -112,16 +112,33 @@ function connectSource() {
                 return;
             }
 
+            // Convert timestamps to Date objects
+            if (msg.data.properties) {
+                if (msg.data.properties.time) msg.data.properties.time = new Date(msg.data.properties.time);
+                if (msg.data.properties.lastupdate) msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
+            }
+
             const id = msg.data.id;
             const { lat, lon } = msg.data.properties;
 
             if (lat && lon) {
+                // Fetch location info using OpenStreetMap API
                 const { display_name, state, country, country_code } = await getLocationInfo(lat, lon);
-                msg.data.properties = { ...msg.data.properties, display_name, state, country, country_code };
 
+                // Add location details to the earthquake object
+                msg.data.properties.display_name = display_name;
+                msg.data.properties.state = state;
+                msg.data.properties.country = country;
+                msg.data.properties.country_code = country_code;
+
+                // Fetch region & subregion using Restcountries API
                 const { region, subregion } = country !== "Unknown" ? await getRegionInfo(country) : { region: "Unknown", subregion: "Unknown" };
                 msg.data.properties.region = region;
                 msg.data.properties.subregion = subregion;
+            } else {
+                logWithTimestamp(`⚠️ Missing lat/lon for earthquake ID ${id}`);
+                msg.data.properties.region = "Unknown";
+                msg.data.properties.subregion = "Unknown";
             }
 
             logWithTimestamp(`🌍 Earthquake received: ID ${id} | Country: ${msg.data.properties.country} | Region: ${msg.data.properties.region} | Mag: ${msg.data.properties.mag}`);
@@ -130,22 +147,38 @@ function connectSource() {
             const updateData = { $set: msg };
             const options = { upsert: true };
 
-            await mongoUtil.updateDocument("EarthquakesData", "Earthquake", filter, updateData, options);
+            const result = await mongoUtil.updateDocument("EarthquakesData", "Earthquake", filter, updateData, options);
 
+            if (result.upsertedId) {
+                logWithTimestamp(`🆕 New earthquake inserted: ID ${id}`);
+            } else if (result.modifiedCount > 0) {
+                logWithTimestamp(`✅ Earthquake updated: ID ${id}`);
+            } else {
+                logWithTimestamp(`⚠️ No changes detected for ID ${id}`);
+            }
+
+            // Add earthquake to both last 100 and last 1000 lists
             earthquakesListLast100.add(id, msg);
             earthquakesListLast1000.add(id, msg);
 
+            // Store them in Redis using setKeyValueRedis
             await setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
             await setKeyValueRedis("last1000earthquakes", earthquakesListLast1000.toJSONString());
 
+            const dataToSend = { action: "sendMessage", source: "relay-server", message: earthquakesListLast100.toJSONString() };
+
             if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
-                destinationSock.send(JSON.stringify({ action: "sendMessage", source: "relay-server", message: earthquakesListLast100.toJSONString() }));
+                destinationSock.send(JSON.stringify(dataToSend));
                 logWithTimestamp('📤 Data forwarded to destination WebSocket');
+            } else {
+                logWithTimestamp('❌ Destination WebSocket not connected', true);
             }
         } catch (error) {
             logWithTimestamp(`❌ Source WebSocket processing error: ${error.message}`, true);
         }
     };
+
+
 
     sourceSock.onclose = () => {
         logWithTimestamp('⚠️ Source WebSocket disconnected. Reconnecting...');
@@ -154,6 +187,7 @@ function connectSource() {
 
     sourceSock.onerror = (error) => {
         logWithTimestamp(`❌ Source WebSocket error: ${error.message}`, true);
+        if (sourceSock.readyState !== WebSocket.CLOSED) sourceSock.close();
     };
 }
 
