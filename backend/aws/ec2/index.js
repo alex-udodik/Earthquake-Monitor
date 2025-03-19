@@ -219,7 +219,7 @@ function connectDestination() {
 // Store key-value pair in Upstash Redis
 async function setKeyValueRedis(key, val) {
     try {
-        await redisClient.set(key, val, 'EX', 3600);
+        await redisClient.set(key, val);
         logWithTimestamp(`✅ Key "${key}" set in Upstash Redis`);
     } catch (error) {
         logWithTimestamp(`❌ Upstash Redis set error: ${error}`, true);
