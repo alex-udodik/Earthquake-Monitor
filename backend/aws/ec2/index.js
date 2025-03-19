@@ -4,116 +4,190 @@ const MongodbSingleton = require('./mongob-singleton');
 const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
 const EarthquakesList = require('./earthquakes-list');
+const Redis = require("ioredis");
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const reconnectInterval = 2000; // 2 seconds delay before reconnecting
 const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
-const redis = require('redis');
-const redisClient = redis.createClient({ socket: { host: process.env.AWS_LIGHTSAIL_REDIS_URL, port: 6379, keepAlive: true } });
+// Initialize Upstash Redis
+const redisClient = new Redis(process.env.UPSTASH_REDIS_URL);
 
-// Handle Redis client events
-redisClient.on('connect', () => {
-    logWithTimestamp('Connected to Redis');
-});
-
-redisClient.on('ready', () => {
-    logWithTimestamp('Redis client is ready');
-});
-
-redisClient.on('error', (err) => {
-    logWithTimestamp(console.error('Redis client error:', err));
-});
-
-redisClient.on('end', () => {
-    logWithTimestamp('Redis connection closed. Attempting to reconnect...');
-    setTimeout(() => client.connect(), reconnectInterval);
-});
+// Handle Redis events
+redisClient.on('connect', () => logWithTimestamp('✅ Connected to Upstash Redis'));
+redisClient.on('error', (err) => logWithTimestamp(`❌ Redis error: ${err}`, true));
 
 let sourceSock;
 let destinationSock;
 let heartbeatInterval;
+const earthquakesListLast100 = new EarthquakesList(100);
+const earthquakesListLast1000 = new EarthquakesList(1000);
 
-const earthquakesList = new EarthquakesList();
+// Log function with MongoDB logging
+async function logWithTimestamp(message, isError = false) {
+    const timestamp = new Date().toISOString();
+    console.log(`${timestamp} ${message}`);
 
-// Log current timestamp in ISO format for each event
-function logWithTimestamp(message) {
-    const now = new Date();  // Get the current timestamp each time you log
-    console.log(`${now.toISOString()} ${message}`);
+    if (isError) {
+        await logErrorToMongoDB(timestamp, message);
+    }
 }
 
-// Connect to the source WebSocket using SockJS (SeismicPortal)
+// OpenStreetMap API function to fetch location details
+async function getLocationInfo(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`;
+
+    try {
+        const response = await fetch(url, { headers: { "User-Agent": "earthquake-app" } });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        const data = await response.json();
+
+        if (data && data.address) {
+            return {
+                display_name: data.display_name || "Unknown",
+                state: data.address.state || "Unknown",
+                country: data.address.country || "Unknown",
+                country_code: data.address.country_code || "Unknown"
+            };
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching location for ${lat}, ${lon}:`, error.message);
+    }
+
+    return { display_name: "Unknown", state: "Unknown", country: "Unknown", country_code: "Unknown" };
+}
+
+async function getRegionInfo(country) {
+    if (!country || country === "Unknown") return { region: "Unknown", subregion: "Unknown" };
+
+    const url = `https://restcountries.com/v3.1/name/${encodeURIComponent(country)}?fields=region,subregion`;
+
+    try {
+        console.log(`🌍 Fetching region for country: ${country}`);
+        const response = await fetch(url, { headers: { "User-Agent": "earthquake-app" } });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+            return {
+                region: data[0].region || "Unknown",
+                subregion: data[0].subregion || "Unknown"
+            };
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching region for ${country}:`, error.message);
+    }
+
+    return { region: "Unknown", subregion: "Unknown" };
+}
+
+// Function to log errors into MongoDB
+async function logErrorToMongoDB(timestamp, message) {
+    try {
+        const mongodbCollection = getCollection("SeismicPortalWebSocket", "Logs");
+        await mongodbCollection.insertOne({ timestamp: new Date(timestamp), message: message });
+    } catch (error) {
+        console.error(`❌ Failed to log error to MongoDB: ${error.message}`);
+    }
+}
+
+// Function to retrieve MongoDB collection
+function getCollection(database, collection) {
+    const databaseInstance = MongodbSingleton.getInstance();
+    return databaseInstance.db(database).collection(collection);
+}
+
+// Connect to the source WebSocket (Seismic Portal)
 function connectSource() {
     sourceSock = new SockJS(sourceUrl);
 
-    sourceSock.onopen = () => {
-        logWithTimestamp(`Connected to source WebSocket: ${sourceUrl}`);
-    };
+    sourceSock.onopen = () => logWithTimestamp(`🔗 Connected to source WebSocket: ${sourceUrl}`);
 
     sourceSock.onmessage = async (e) => {
-        const msg = JSON.parse(e.data);
-        if (!msg || !msg.data || !msg.data.id) {
-            logWithTimestamp('Received undefined earthquake data. Skipping.');
-            return;
-        }
-
-        // Convert string timestamps to MongoDB Date objects
-        if (msg.data.properties) {
-            if (msg.data.properties.time) {
-                msg.data.properties.time = new Date(msg.data.properties.time);
+        try {
+            const msg = JSON.parse(e.data);
+            if (!msg || !msg.data || !msg.data.id) {
+                logWithTimestamp('⚠️ Received undefined earthquake data. Skipping.');
+                return;
             }
-            if (msg.data.properties.lastupdate) {
-                msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
+
+            // Convert timestamps to Date objects
+            if (msg.data.properties) {
+                if (msg.data.properties.time) msg.data.properties.time = new Date(msg.data.properties.time);
+                if (msg.data.properties.lastupdate) msg.data.properties.lastupdate = new Date(msg.data.properties.lastupdate);
             }
-        }
 
-        const id = msg.data.id;
-        logWithTimestamp(`Earthquake data received with ID ${id}`);
-        logWithTimestamp(`Time: ${msg.data.properties.time}`);
-        logWithTimestamp(`Region: ${msg.data.properties.flynn_region}`);
-        logWithTimestamp(`Magnitude: ${msg.data.properties.mag}`);
+            const id = msg.data.id;
+            const { lat, lon } = msg.data.properties;
 
-        const filter = { "data.id": id };
-        const result = await mongoUtil.replaceDocumentOrCreateNew(
-            "EarthquakesData",
-            "Earthquake",
-            msg,
-            filter,
-            { upsert: true }
-        );
+            if (lat && lon) {
+                // Fetch location info using OpenStreetMap API
+                const { display_name, state, country, country_code } = await getLocationInfo(lat, lon);
 
-        logWithTimestamp(
-            result.modifiedCount === 0
-                ? `Earthquake data with ID {${id}} created in MongoDB.`
-                : `Document with ID {${id}} updated in MongoDB.`
-        );
+                // Add location details to the earthquake object
+                msg.data.properties.display_name = display_name;
+                msg.data.properties.state = state;
+                msg.data.properties.country = country;
+                msg.data.properties.country_code = country_code;
 
-        earthquakesList.add(id, msg);
-        await setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
+                // Fetch region & subregion using Restcountries API
+                const { region, subregion } = country !== "Unknown" ? await getRegionInfo(country) : { region: "Unknown", subregion: "Unknown" };
+                msg.data.properties.region = region;
+                msg.data.properties.subregion = subregion;
+            } else {
+                logWithTimestamp(`⚠️ Missing lat/lon for earthquake ID ${id}`);
+                msg.data.properties.region = "Unknown";
+                msg.data.properties.subregion = "Unknown";
+            }
 
-        const dataToSend = {
-            action: "sendMessage",
-            source: "relay-server",
-            message: earthquakesList.toJSONString()
-        };
+            logWithTimestamp(`🌍 Earthquake received: ID ${id} | Country: ${msg.data.properties.country} | Region: ${msg.data.properties.region} | Mag: ${msg.data.properties.mag}`);
 
-        if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
-            destinationSock.send(JSON.stringify(dataToSend));
-            logWithTimestamp('Data forwarded to destination WebSocket');
-        } else {
-            logWithTimestamp('Destination WebSocket is not connected, unable to forward data.');
+            const filter = { "data.id": id };
+            const updateData = { $set: msg };
+            const options = { upsert: true };
+
+            const result = await mongoUtil.updateDocument("EarthquakesData", "Earthquake", filter, updateData, options);
+
+            if (result.upsertedId) {
+                logWithTimestamp(`🆕 New earthquake inserted: ID ${id}`);
+            } else if (result.modifiedCount > 0) {
+                logWithTimestamp(`✅ Earthquake updated: ID ${id}`);
+            } else {
+                logWithTimestamp(`⚠️ No changes detected for ID ${id}`);
+            }
+
+            // Add earthquake to both last 100 and last 1000 lists
+            earthquakesListLast100.add(id, msg);
+            earthquakesListLast1000.add(id, msg);
+
+            // Store them in Redis using setKeyValueRedis
+            await setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
+            await setKeyValueRedis("last1000earthquakes", earthquakesListLast1000.toJSONString());
+
+            const dataToSend = { action: "sendMessage", source: "relay-server", message: earthquakesListLast100.toJSONString() };
+
+            if (destinationSock && destinationSock.readyState === WebSocket.OPEN) {
+                destinationSock.send(JSON.stringify(dataToSend));
+                logWithTimestamp('📤 Data forwarded to destination WebSocket');
+            } else {
+                logWithTimestamp('❌ Destination WebSocket not connected', true);
+            }
+        } catch (error) {
+            logWithTimestamp(`❌ Source WebSocket processing error: ${error.message}`, true);
         }
     };
+
 
 
     sourceSock.onclose = () => {
-        logWithTimestamp('Source WebSocket disconnected. Reconnecting...');
+        logWithTimestamp('⚠️ Source WebSocket disconnected. Reconnecting...');
         setTimeout(connectSource, reconnectInterval);
     };
 
     sourceSock.onerror = (error) => {
-        console.error(`${new Date().toISOString()} Source WebSocket encountered error:`, error);
-        sourceSock.close(); // Close to trigger reconnection
+        logWithTimestamp(`❌ Source WebSocket error: ${error.message}`, true);
+        if (sourceSock.readyState !== WebSocket.CLOSED) sourceSock.close();
     };
 }
 
@@ -121,81 +195,56 @@ function connectSource() {
 function connectDestination() {
     destinationSock = new WebSocket(destinationUrl);
 
-    const dataToSend = {
-        action: "ping",
-        source: "relay-server",
-        message: "ping to keep server alive"
-    };
-
     destinationSock.on('open', () => {
-        logWithTimestamp(`Connected to destination WebSocket: ${destinationUrl}`);
-
-        clearInterval(heartbeatInterval);
+        logWithTimestamp(`🔗 Connected to destination WebSocket: ${destinationUrl}`);
         heartbeatInterval = setInterval(() => {
             if (destinationSock.readyState === WebSocket.OPEN) {
-                destinationSock.send(JSON.stringify(dataToSend));
-                logWithTimestamp('Sent heartbeat (ping)');
+                destinationSock.send(JSON.stringify({ action: "ping", source: "relay-server", message: "ping to keep server alive" }));
+                logWithTimestamp('💓 Sent heartbeat');
             }
-        }, 30000); // Send every 30 seconds
-    });
-
-    destinationSock.on('message', (data) => {
-        const message = JSON.parse(data);
-        if (message.action === 'ping') {
-            logWithTimestamp(`Received message from server: ${message.message}`);
-        }
-
-        //TODO filter out broadcast messages from websocket that come back through here
+        }, 30000);
     });
 
     destinationSock.on('close', () => {
-        logWithTimestamp('Destination WebSocket disconnected. Reconnecting...');
+        logWithTimestamp('⚠️ Destination WebSocket disconnected. Reconnecting...');
         clearInterval(heartbeatInterval);
         setTimeout(connectDestination, reconnectInterval);
     });
 
     destinationSock.on('error', (error) => {
-        console.error(`${new Date().toISOString()} Destination WebSocket encountered error:`, error);
-        destinationSock.close(); // Close to trigger reconnection
+        logWithTimestamp(`❌ Destination WebSocket error: ${error.message}`, true);
     });
 }
 
-// Set a key/value pair in Redis
+// Store key-value pair in Upstash Redis
 async function setKeyValueRedis(key, val) {
     try {
         await redisClient.set(key, val);
-        logWithTimestamp('Key set in Redis successfully');
+        logWithTimestamp(`✅ Key "${key}" set in Upstash Redis`);
     } catch (error) {
-        console.error('Error setting key/value in Redis:', error);
+        logWithTimestamp(`❌ Upstash Redis set error: ${error}`, true);
     }
 }
 
-// Initialize MongoDB connection
+// Initialize MongoDB & Redis
 (async () => {
     try {
-        await redisClient.connect()
-            .then(() => logWithTimestamp('Connected to Redis asynchronously'))
-            .catch((err) => console.error('Redis connection error:', err));
-
         const mongodb = MongodbSingleton.getInstance();
         await mongodb.connect();
+        // Load last 100 and last 1000 earthquakes from MongoDB
         const last100Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 100);
+        const last1000Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 1000);
 
-        populateEarthquakesList(last100Earthquakes);
-        setKeyValueRedis("last100earthquakes", earthquakesList.toJSONString());
+        last100Earthquakes.forEach(doc => earthquakesListLast100.add(doc.data.id, doc));
+        last1000Earthquakes.forEach(doc => earthquakesListLast1000.add(doc.data.id, doc));
+
+        await setKeyValueRedis("last100earthquakes", earthquakesListLast100.toJSONString());
+        await setKeyValueRedis("last1000earthquakes", earthquakesListLast1000.toJSONString());
     } catch (error) {
-        logWithTimestamp(`MongoDB connection error: ${error}`);
+        logWithTimestamp(`❌ MongoDB connection error: ${error}`, true);
     }
 })();
 
-// Populate earthquakes list with initial data
-function populateEarthquakesList(documents) {
-    documents.forEach((doc) => {
-        delete doc._id;
-        earthquakesList.add(doc.data.id, doc);
-    });
-}
-
-// Start both WebSocket connections
+// Start WebSocket connections
 connectSource();
 connectDestination();

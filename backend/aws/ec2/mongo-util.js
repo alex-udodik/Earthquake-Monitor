@@ -1,43 +1,29 @@
 const MongoDBSingleton = require('./mongob-singleton');
-const { MongoError } = require("mongodb");
-
 
 module.exports = {
-
-    replaceDocumentOrCreateNew: async function (database, collection, document, filter, options) {
+    updateDocument: async function (database, collection, filter, updateData, options) {
         try {
             const mongodbCollection = getCollection(database, collection);
-            return await mongodbCollection.replaceOne(filter, document, options);
+            return await mongodbCollection.updateOne(filter, updateData, options);
         } catch (error) {
-            console.log(error.message);
+            console.log(`❌ MongoDB update error: ${error.message}`);
         }
     },
 
     getLastXDocuments: async function (database, collection, lastX) {
         try {
             const mongodbCollection = getCollection(database, collection);
-
-            // Fetch last X documents sorted by `data.properties.time` in descending order
-            const documents = await mongodbCollection.find({})
+            return await mongodbCollection.find({})
                 .sort({ "data.properties.time": -1 }) // Sort by time (newest first)
-                .limit(lastX)  // Get the last X documents
+                .limit(lastX)
                 .toArray();
-
-            return documents;
         } catch (error) {
-            console.log(error.message);
+            console.log(`❌ MongoDB fetch error: ${error.message}`);
         }
     }
-
 }
 
-const getCollection = function (database, collection) {
-    try {
-        const databaseInstance = MongoDBSingleton.getInstance()
-        const mongodbDatabase = databaseInstance.db(database);
-        return mongodbDatabase.collection(collection);
-    } catch (error) {
-        console.log(error)
-        throw new MongoError(`There was an error fetching the mongo instance.`);
-    }
+function getCollection(database, collection) {
+    const databaseInstance = MongoDBSingleton.getInstance();
+    return databaseInstance.db(database).collection(collection);
 }

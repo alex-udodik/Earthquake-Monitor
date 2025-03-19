@@ -39,7 +39,7 @@ class SocketProvider with ChangeNotifier {
     // Start a ping timer to keep the connection alive
     _startPingTimer();
 
-    var message = {"action": "initData", "message": ""};
+    var message = {"action": "initData", "rediskey": ""};
     print("Requesting initial data from socket");
     sendMessage(message);
   }

@@ -5,11 +5,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:client/services/socket_provider.dart';
 import '../../models/earthquake.dart';
 import 'pulsating_marker.dart';
-import 'earthquake_filter_modal.dart';
 import 'earthquake_info_panel.dart';
 import 'earthquake_legend.dart';
-import 'location_search.dart';
-import 'live_earthquake_widget.dart'; // Import the Live Widget
+import 'live_earthquake_widget.dart';
+import 'earthquake_filter_widget.dart'; // Import the Filter Widget
+import 'earthquake_filter_fab.dart'; // Import the new FAB Widget
+import 'package:flutter_map_geojson/flutter_map_geojson.dart';
 
 class MapScreen extends StatefulWidget {
   final MapController mapController;
@@ -27,11 +28,13 @@ class _MapScreenState extends State<MapScreen> {
   Earthquake? _selectedEarthquake;
   Offset? _tapPosition;
 
+  // Filtering parameters
   double minMagnitude = 0.0;
   double maxMagnitude = 10.0;
   double minDepth = 0.0;
   double maxDepth = 700.0;
   double timeRange = 24.0;
+  String selectedLocation = "Any"; // Default location filter
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +43,7 @@ class _MapScreenState extends State<MapScreen> {
         ? socketProvider.earthquakes // Live Data
         : _fetchHistoricalData(); // Historical Data
 
-    _updateMarkers(earthquakes);
+    _updateMarkers(earthquakes); // Update markers based on filters
 
     return Scaffold(
       body: Stack(
@@ -80,15 +83,33 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Location Search Bar
-          LocationSearch(mapController: widget.mapController),
-
           // Live Earthquake Widget (Only in Live View)
-          if (widget.isLive) LiveEarthquakeWidget(),
+          //if (widget.isLive) const LiveEarthquakeWidget(),
 
           // Magnitude Legend
-          EarthquakeLegend(),
+          const EarthquakeLegend(),
         ],
+      ),
+
+      // 🔹 Use the new EarthquakeFilterFAB instead of direct FAB
+      floatingActionButton: EarthquakeFilterFAB(
+        minMagnitude: minMagnitude,
+        maxMagnitude: maxMagnitude,
+        minDepth: minDepth,
+        maxDepth: maxDepth,
+        timeRange: timeRange,
+        selectedLocation: selectedLocation,
+        onFilterApplied: (newMinMag, newMaxMag, newMinDepth, newMaxDepth,
+            newTimeRange, newLocation) {
+          setState(() {
+            minMagnitude = newMinMag;
+            maxMagnitude = newMaxMag;
+            minDepth = newMinDepth;
+            maxDepth = newMaxDepth;
+            timeRange = newTimeRange;
+            selectedLocation = newLocation;
+          });
+        },
       ),
     );
   }
@@ -98,9 +119,29 @@ class _MapScreenState extends State<MapScreen> {
     return []; // Implement historical data fetching here
   }
 
+  // Update Markers based on filters
   void _updateMarkers(List<Earthquake> earthquakes) {
     _markers.clear();
-    for (final earthquake in earthquakes) {
+
+    final filteredEarthquakes = earthquakes.where((earthquake) {
+      final mag = earthquake.data.properties.mag;
+      final depth = earthquake.data.properties.depth;
+
+      // ✅ Ensure timeData is correctly parsed as a String
+      String timeData = earthquake.data.properties.time;
+      DateTime earthquakeTime =
+          DateTime.tryParse(timeData)?.toLocal() ?? DateTime.now();
+
+      final timeDifference = DateTime.now().difference(earthquakeTime).inHours;
+
+      return mag >= minMagnitude &&
+          mag <= maxMagnitude &&
+          depth >= minDepth &&
+          depth <= maxDepth &&
+          timeDifference <= timeRange;
+    }).toList();
+
+    for (final earthquake in filteredEarthquakes) {
       final marker = Marker(
         point: LatLng(
             earthquake.data.properties.lat, earthquake.data.properties.lon),
@@ -112,6 +153,7 @@ class _MapScreenState extends State<MapScreen> {
       );
       _markers[earthquake.data.id] = marker;
     }
+
     setState(() {});
   }
 }

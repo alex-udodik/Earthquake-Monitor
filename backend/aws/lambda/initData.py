@@ -12,7 +12,12 @@ def lambda_handler(event, context):
 
     try:
         # Connect to Redis
-        r = redis.Redis(host=redis_host, port=redis_port)
+        r = redis.Redis(
+            host='selected-bull-34594.upstash.io',
+            port=6379,
+            password=os.getenv("UPSTASH_REDIS_URL"),
+            ssl=True
+        )
 
         # Get the value for the specified key
         value = r.get(redis_key)
