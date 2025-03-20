@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:client/services/socket_provider.dart';
 import 'package:provider/provider.dart';
 import '../../models/earthquake.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class LatestEarthquakeCard extends StatefulWidget {
@@ -66,17 +65,6 @@ class _LatestEarthquakeCardState extends State<LatestEarthquakeCard> {
       setState(() {
         region = earthquake.data.properties.flynnRegion;
       });
-
-      Fluttertoast.showToast(
-        msg:
-            "New Earthquake in: ${earthquake.data.properties.flynnRegion} with ${earthquake.data.properties.mag} magnitude",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 5,
-        backgroundColor: Colors.black,
-        textColor: Colors.white,
-        fontSize: 30.0,
-      );
 
       _playSound();
     } else {

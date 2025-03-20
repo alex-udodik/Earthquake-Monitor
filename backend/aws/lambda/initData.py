@@ -5,9 +5,7 @@ import boto3
 
 
 def lambda_handler(event, context):
-    # Update with your EC2 instance's private IP address and Redis port (default: 6379)
-    redis_host = os.getenv("AWS_LIGHTSAIL_REDIS_URL")
-    redis_port = 6379  # Default Redis port
+
     redis_key = "last100earthquakes"  # Key you want to retrieve
 
     try:
@@ -15,7 +13,7 @@ def lambda_handler(event, context):
         r = redis.Redis(
             host='selected-bull-34594.upstash.io',
             port=6379,
-            password=os.getenv("UPSTASH_REDIS_URL"),
+            password=os.getenv("UPSTASH_REDIS_PASS"),
             ssl=True
         )
 
