@@ -87,7 +87,7 @@ class _MapScreenState extends State<MapScreen> {
           //if (widget.isLive) const LiveEarthquakeWidget(),
 
           // Magnitude Legend
-          const EarthquakeLegend(),
+          //const EarthquakeLegend(),
         ],
       ),
 
