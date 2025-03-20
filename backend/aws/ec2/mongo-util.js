@@ -20,10 +20,11 @@ module.exports = {
         } catch (error) {
             console.log(`❌ MongoDB fetch error: ${error.message}`);
         }
+    },
+
+    getCollection: function (database, collection) {
+        const databaseInstance = MongoDBSingleton.getInstance();
+        return databaseInstance.db(database).collection(collection);
     }
 }
 
-function getCollection(database, collection) {
-    const databaseInstance = MongoDBSingleton.getInstance();
-    return databaseInstance.db(database).collection(collection);
-}

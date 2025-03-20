@@ -4,8 +4,8 @@
 # This file should be version controlled and should not be manually edited.
 
 version:
-  revision: "ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a"
-  channel: "stable"
+  revision: "ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f"
+  channel: "main"
 
 project_type: app
 
@@ -13,26 +13,26 @@ project_type: app
 migration:
   platforms:
     - platform: root
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
     - platform: android
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
     - platform: ios
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
     - platform: linux
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
     - platform: macos
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
     - platform: web
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
     - platform: windows
-      create_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
-      base_revision: ff5b5b5fa6f35b717667719ddfdb1521d8bdd05a
+      create_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
+      base_revision: ebc7d244d365a8bb5ea3b7f1d8c5dc87107ab44f
 
   # User provided section
 

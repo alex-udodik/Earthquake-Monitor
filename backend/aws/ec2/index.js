@@ -85,17 +85,11 @@ async function getRegionInfo(country) {
 // Function to log errors into MongoDB
 async function logErrorToMongoDB(timestamp, message) {
     try {
-        const mongodbCollection = getCollection("SeismicPortalWebSocket", "Logs");
+        const mongodbCollection = mongoUtil.getCollection("SeismicPortalWebSocket", "Logs");
         await mongodbCollection.insertOne({ timestamp: new Date(timestamp), message: message });
     } catch (error) {
         console.error(`❌ Failed to log error to MongoDB: ${error.message}`);
     }
-}
-
-// Function to retrieve MongoDB collection
-function getCollection(database, collection) {
-    const databaseInstance = MongodbSingleton.getInstance();
-    return databaseInstance.db(database).collection(collection);
 }
 
 // Connect to the source WebSocket (Seismic Portal)
