@@ -49,6 +49,8 @@ dependencies:
   intl: ^0.19.0
   timeago: ^3.7.0
   webview_flutter: ^4.7.0
+  webview_flutter_wkwebview: 3.17.0
+
   flutter_map_geojson: ^1.0.3
 
 dev_dependencies:
