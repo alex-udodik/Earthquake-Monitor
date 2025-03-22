@@ -246,3 +246,4 @@ MigrationBackup/
 
 # Visual Studio Patch ###
 # Additional files built by Visual Studio
+.DS_Store
