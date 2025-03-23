@@ -10,16 +10,8 @@ class EarthquakeDashboard extends StatefulWidget {
   _EarthquakeDashboardState createState() => _EarthquakeDashboardState();
 }
 
-class _EarthquakeDashboardState extends State<EarthquakeDashboard>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
   final MapController _mapController = MapController();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
 
   void _moveCameraTo(LatLng position) {
     _mapController.move(position, 8.0);
@@ -28,32 +20,22 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      drawer: _buildDrawer(context),
+      body: Stack(
         children: [
-          // Tab Bar at the top (replacing AppBar)
-          Container(
-            color:
-                Color.fromARGB(48, 48, 48, 0), // Background color for the tabs
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Colors.blue,
-              tabs: [
-                Tab(icon: Icon(Icons.public), text: "Live View"),
-                Tab(icon: Icon(Icons.history), text: "History View"),
-              ],
-            ),
-          ),
+          _buildLiveView(),
 
-          // Expanded TabBarView (Main Content)
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildMapScreen(isLive: true), // Live View
-                _buildMapScreen(isLive: false), // History View
-              ],
+          // FAB to open the drawer manually (top-left)
+          Positioned(
+            top: 32,
+            left: 16,
+            child: Builder(
+              builder: (context) => FloatingActionButton(
+                mini: true,
+                backgroundColor: Colors.black.withOpacity(0.7),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                child: Icon(Icons.menu, color: Colors.white),
+              ),
             ),
           ),
         ],
@@ -61,7 +43,7 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
     );
   }
 
-  Widget _buildMapScreen({required bool isLive}) {
+  Widget _buildLiveView() {
     return LayoutBuilder(
       builder: (context, constraints) {
         bool isWideScreen = constraints.maxWidth > 600;
@@ -72,7 +54,7 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
               Expanded(
                 child: Row(
                   children: [
-                    // Map takes up full available space
+                    // Map
                     Expanded(
                       flex: 4,
                       child: Container(
@@ -86,13 +68,14 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
                           child: Center(
                             child: MapScreen(
                               mapController: _mapController,
-                              isLive: isLive,
+                              isLive: true,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    // Card List takes up full available space
+
+                    // Earthquake card list
                     Expanded(
                       flex: 1,
                       child: Container(
@@ -109,29 +92,70 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
                   ],
                 ),
               ),
-
-              // Only show additional widgets in History View
-              if (!isLive) _buildAdditionalWidgets(),
+              // You can re-enable this if needed
+              //_buildAdditionalWidgets(),
             ],
           );
         } else {
           return Column(
             children: [
               Expanded(
-                child: MapScreen(mapController: _mapController, isLive: isLive),
+                child: MapScreen(
+                  mapController: _mapController,
+                  isLive: true,
+                ),
               ),
               Expanded(
                 child: EarthquakeCardList(
                   onCardTap: _moveCameraTo,
                 ),
               ),
-
-              // Only show additional widgets in History View
-              if (!isLive) _buildAdditionalWidgets(),
+              //_buildAdditionalWidgets(),
             ],
           );
         }
       },
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(color: Colors.blueGrey[800]),
+            child: Text(
+              'Earthquake Menu',
+              style: TextStyle(color: Colors.white, fontSize: 24),
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.map),
+            title: Text('Live View'),
+            onTap: () {
+              Navigator.pop(context);
+              // Optionally trigger state changes
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.history),
+            title: Text('History (Coming Soon)'),
+            onTap: () {
+              Navigator.pop(context);
+              // Optional: navigate or set view
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.settings),
+            title: Text('Settings'),
+            onTap: () {
+              Navigator.pop(context);
+              // Handle settings navigation
+            },
+          ),
+        ],
+      ),
     );
   }
 
