@@ -8,10 +8,14 @@ import 'package:latlong2/latlong.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class EarthquakeCardList extends StatefulWidget {
-  final void Function(LatLng) onCardTap; // Callback function
+  final void Function(LatLng) onCardTap;
+  final ScrollController? scrollController;
 
-  const EarthquakeCardList({Key? key, required this.onCardTap})
-      : super(key: key);
+  const EarthquakeCardList({
+    Key? key,
+    required this.onCardTap,
+    this.scrollController,
+  }) : super(key: key);
 
   @override
   _EarthquakeCardListState createState() => _EarthquakeCardListState();
@@ -19,25 +23,23 @@ class EarthquakeCardList extends StatefulWidget {
 
 class _EarthquakeCardListState extends State<EarthquakeCardList> {
   late AudioPlayer _audioPlayer;
-  int? _newEarthquakeIndex; // Track the latest earthquake index
-  Timer? _timer; // Timer for periodic updates
-  int _filterIndex = 0; // Index for current filter selection
+  int? _newEarthquakeIndex;
+  Timer? _timer;
+  int _filterIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
 
-    // ✅ Auto-refresh the widget every 10 seconds (sync with LiveEarthquakeWidget)
     _timer = Timer.periodic(Duration(seconds: 10), (timer) {
-      setState(
-          () {}); // Forces the widget to rebuild and update time dynamically
+      setState(() {});
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel(); // Stop the timer when the widget is destroyed
+    _timer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -52,7 +54,6 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
       return Center(child: CircularProgressIndicator());
     }
 
-    // New quake detection logic (no change)
     if (socketProvider.newEarthquakeReceived) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         setState(() {
@@ -71,11 +72,9 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
 
     return Column(
       children: [
-        // 🔹 Filter Header
-
-        // 🔹 Earthquake List
         Expanded(
           child: ListView.builder(
+            controller: widget.scrollController, // ✅ Use passed controller
             itemCount: earthquakes.length.clamp(0, 100),
             padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
             itemBuilder: (context, index) {
@@ -154,15 +153,15 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
     double normalizedMagnitude = magnitude.clamp(0.0, 10.0);
 
     final List<Color> gradientColors = [
-      Colors.green, // 0.0 - 2.9
-      Colors.lightGreen, // 3.0 - 3.9
-      Colors.yellow, // 4.0 - 4.9
-      Colors.amber, // 5.0 - 5.9
-      Colors.orange, // 6.0 - 6.9
-      Colors.deepOrange, // 7.0 - 7.9
-      Colors.red, // 8.0 - 8.9
-      Colors.red.shade700, // 9.0 - 9.9
-      Colors.brown, // 10.0
+      Colors.green,
+      Colors.lightGreen,
+      Colors.yellow,
+      Colors.amber,
+      Colors.orange,
+      Colors.deepOrange,
+      Colors.red,
+      Colors.red.shade700,
+      Colors.brown,
     ];
 
     int index =
