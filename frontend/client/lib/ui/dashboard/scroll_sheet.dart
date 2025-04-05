@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'cardlist.dart'; // make sure this is correctly imported
+import 'cardlist.dart';
 
 class EarthquakeScrollSheet extends StatelessWidget {
   final Function(LatLng) onCardTap;
@@ -22,9 +22,9 @@ class EarthquakeScrollSheet extends StatelessWidget {
             color: Colors.black87,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: ListView(
-            controller: scrollController,
+          child: Column(
             children: [
+              // 👇 This stays visible, always at the top
               Center(
                 child: Container(
                   margin: EdgeInsets.symmetric(vertical: 8),
@@ -36,8 +36,9 @@ class EarthquakeScrollSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.8,
+
+              // 👇 Scrollable content below it
+              Expanded(
                 child: EarthquakeCardList(
                   onCardTap: onCardTap,
                   scrollController: scrollController,
