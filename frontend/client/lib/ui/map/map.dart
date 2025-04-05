@@ -91,13 +91,13 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
 
-      /*// 🔹 Use the new EarthquakeFilterFAB instead of direct FAB
+      // 🔹 Use the new EarthquakeFilterFAB instead of direct FAB
       floatingActionButton: EarthquakeFilterFAB(
         minMagnitude: minMagnitude,
         maxMagnitude: maxMagnitude,
         minDepth: minDepth,
         maxDepth: maxDepth,
-        timeRange: timSeRange,
+        timeRange: timeRange,
         selectedLocation: selectedLocation,
         onFilterApplied: (newMinMag, newMaxMag, newMinDepth, newMaxDepth,
             newTimeRange, newLocation) {
@@ -110,7 +110,7 @@ class _MapScreenState extends State<MapScreen> {
             selectedLocation = newLocation;
           });
         },
-      ),*/
+      ),
     );
   }
 
