@@ -21,7 +21,7 @@ class MobileBottomNav extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.public),
-          label: 'Live View',
+          label: 'Live',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.history),
