@@ -51,7 +51,15 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     if (earthquakes.isEmpty) {
-      return Center(child: CircularProgressIndicator());
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(height: 16), // spacing from the top
+          Center(
+            child: CircularProgressIndicator(),
+          ),
+        ],
+      );
     }
 
     if (socketProvider.newEarthquakeReceived) {

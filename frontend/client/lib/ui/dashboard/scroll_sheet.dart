@@ -13,8 +13,8 @@ class EarthquakeScrollSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.2,
-      minChildSize: 0.1,
+      initialChildSize: 0.1,
+      minChildSize: 0.05,
       maxChildSize: 0.85,
       builder: (context, scrollController) {
         return Container(
