@@ -22,23 +22,26 @@ class EarthquakeScrollSheet extends StatelessWidget {
             color: Colors.black87,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: Column(
+          child: ListView(
+            controller: scrollController,
+            padding: EdgeInsets.zero,
             children: [
-              // 👇 This stays visible, always at the top
+              SizedBox(height: 12),
               Center(
                 child: Container(
-                  margin: EdgeInsets.symmetric(vertical: 8),
-                  width: 40,
-                  height: 6,
+                  width: 60,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(3),
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
+              SizedBox(height: 12),
 
-              // 👇 Scrollable content below it
-              Expanded(
+              // ⬇️ Make the inner scrollable widget fixed-height
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.75,
                 child: EarthquakeCardList(
                   onCardTap: onCardTap,
                   scrollController: scrollController,
