@@ -104,7 +104,7 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
                 },
                 child: AnimatedContainer(
                   duration: Duration(milliseconds: 400),
-                  margin: EdgeInsets.symmetric(vertical: isMobile ? 4 : 6),
+                  margin: EdgeInsets.symmetric(vertical: isMobile ? 2 : 2),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: _newEarthquakeIndex == index
@@ -138,11 +138,7 @@ class _EarthquakeCardListState extends State<EarthquakeCardList> {
                           SizedBox(height: isMobile ? 4 : 8),
                           Text('Magnitude: ${props.mag}',
                               style: TextStyle(fontSize: isMobile ? 12 : 14)),
-                          Text('Depth: ${props.depth} km',
-                              style: TextStyle(fontSize: isMobile ? 12 : 14)),
                           Text('Occurred: $relativeTime',
-                              style: TextStyle(fontSize: isMobile ? 12 : 14)),
-                          Text('Last Updated: $lastUpdateFormatted',
                               style: TextStyle(fontSize: isMobile ? 12 : 14)),
                         ],
                       ),

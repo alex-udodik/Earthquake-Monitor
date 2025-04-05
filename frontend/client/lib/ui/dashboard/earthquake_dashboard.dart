@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
 import 'package:flutter_map/flutter_map.dart';
 
 import '../map/map.dart';
@@ -22,9 +20,12 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
     _mapController.move(position, 8.0);
   }
 
+  bool isMobileLayout(BuildContext context) =>
+      MediaQuery.of(context).size.width < 600;
+
   @override
   Widget build(BuildContext context) {
-    final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+    final isMobile = isMobileLayout(context);
 
     return Scaffold(
       body: _buildBody(_selectedIndex, isMobile),
@@ -53,7 +54,7 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
   Widget _buildLiveView(bool isMobile) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        bool isWideScreen = constraints.maxWidth > 600;
+        final isWideScreen = constraints.maxWidth > 600;
 
         if (isWideScreen && !isMobile) {
           return Column(

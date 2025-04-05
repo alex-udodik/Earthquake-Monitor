@@ -80,11 +80,11 @@ class _MapScreenState extends State<MapScreen> {
         // Floating FAB that sits above scroll sheet
         Positioned(
           top: 0,
-          left: 0,
+          right: 0,
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.only(
-                  top: 12.0, left: 12.0), // 👈 adjust as needed
+                  top: 12.0, right: 12.0), // 👈 adjust as needed
               child: EarthquakeFilterFAB(
                 minMagnitude: minMagnitude,
                 maxMagnitude: maxMagnitude,
@@ -122,6 +122,8 @@ class _MapScreenState extends State<MapScreen> {
     final filteredEarthquakes = earthquakes.where((earthquake) {
       final mag = earthquake.data.properties.mag;
       final depth = earthquake.data.properties.depth;
+      final region = earthquake.data.properties.region.trim().toLowerCase();
+      final selectedRegion = selectedLocation.trim().toLowerCase();
 
       String timeData = earthquake.data.properties.time;
       DateTime earthquakeTime =
@@ -129,17 +131,22 @@ class _MapScreenState extends State<MapScreen> {
 
       final timeDifference = DateTime.now().difference(earthquakeTime).inHours;
 
-      return mag >= minMagnitude &&
-          mag <= maxMagnitude &&
-          depth >= minDepth &&
-          depth <= maxDepth &&
-          timeDifference <= timeRange;
+      final matchesMagnitude = mag >= minMagnitude && mag <= maxMagnitude;
+      final matchesDepth = depth >= minDepth && depth <= maxDepth;
+      final matchesTime = timeDifference <= timeRange;
+      final matchesLocation = selectedRegion == "any" || selectedRegion.isEmpty
+          ? true
+          : region.contains(selectedRegion);
+
+      return matchesMagnitude && matchesDepth && matchesTime && matchesLocation;
     }).toList();
 
     for (final earthquake in filteredEarthquakes) {
       final marker = Marker(
         point: LatLng(
-            earthquake.data.properties.lat, earthquake.data.properties.lon),
+          earthquake.data.properties.lat,
+          earthquake.data.properties.lon,
+        ),
         width: 100.0,
         height: 100.0,
         builder: (ctx) => PulsatingMarker(

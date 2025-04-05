@@ -35,8 +35,7 @@ class _EarthquakeFilterWidgetState extends State<EarthquakeFilterWidget> {
 
   final List<String> _locations = [
     "Any",
-    "North America",
-    "South America",
+    "Americas",
     "Europe",
     "Asia",
     "Africa",
