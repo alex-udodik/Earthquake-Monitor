@@ -57,7 +57,9 @@ class _MapScreenState extends State<MapScreen> {
             mapController: widget.mapController,
             options: MapOptions(
               center: LatLng(0, 0),
-              zoom: 3.0,
+              zoom: 2.0,
+              minZoom: 2.0,
+              maxBounds: LatLngBounds(LatLng(-85, -200), LatLng(85, 200)),
               onTap: (_, __) {
                 setState(() {
                   _selectedEarthquake = null;

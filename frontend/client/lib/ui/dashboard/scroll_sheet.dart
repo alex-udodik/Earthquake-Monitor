@@ -20,13 +20,13 @@ class EarthquakeScrollSheet extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: Colors.black87,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
           ),
           child: ListView(
             controller: scrollController,
             padding: EdgeInsets.zero,
             children: [
-              SizedBox(height: 10),
+              SizedBox(height: 8),
               Center(
                 child: Container(
                   width: 40,
@@ -37,7 +37,7 @@ class EarthquakeScrollSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(height: 6),
+              SizedBox(height: 2),
 
               // ⬇️ Make the inner scrollable widget fixed-height
               SizedBox(
