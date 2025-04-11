@@ -28,27 +28,15 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
     final isMobile = isMobileLayout(context);
 
     return Scaffold(
-      body: _buildBody(_selectedIndex, isMobile),
-      bottomNavigationBar: isMobile
+      body: _buildLiveView(isMobile),
+      /*bottomNavigationBar: isMobile
           ? MobileBottomNav(
               currentIndex: _selectedIndex,
               onTap: (index) => setState(() => _selectedIndex = index),
             )
           : null,
+      */
     );
-  }
-
-  Widget _buildBody(int index, bool isMobile) {
-    switch (index) {
-      case 0:
-        return _buildLiveView(isMobile);
-      case 1:
-        return _buildHistoryView();
-      case 2:
-        return _buildSettingsView();
-      default:
-        return _buildLiveView(isMobile);
-    }
   }
 
   Widget _buildLiveView(bool isMobile) {
@@ -116,6 +104,20 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
     );
   }
 
+/*
+  Widget _buildBody(int index, bool isMobile) {
+    switch (index) {
+      case 0:
+        return _buildLiveView(isMobile);
+      case 1:
+        return _buildHistoryView();
+      case 2:
+        return _buildSettingsView();
+      default:
+        return _buildLiveView(isMobile);
+    }
+  }
+  
   Widget _buildHistoryView() {
     return Center(
       child: Text(
@@ -133,4 +135,5 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
       ),
     );
   }
+  */
 }
