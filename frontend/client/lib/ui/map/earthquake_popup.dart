@@ -1,3 +1,4 @@
+import 'package:client/ui/map/pulsating_marker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -83,10 +84,12 @@ class EarthquakeDetailPopup extends StatelessWidget {
                       MarkerLayer(markers: [
                         Marker(
                           point: quakeLatLng,
-                          width: 10,
-                          height: 10,
-                          builder: (_) => const Icon(Icons.location_on,
-                              color: Colors.red, size: 20),
+                          width: 40,
+                          height: 40,
+                          builder: (_) => PulsatingMarker(
+                            magnitude: props.mag,
+                            animate: true,
+                          ),
                         ),
                         Marker(
                           point: userLocation,
@@ -96,16 +99,6 @@ class EarthquakeDetailPopup extends StatelessWidget {
                               color: Colors.blue, size: 20),
                         ),
                       ]),
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: interpolateGreatCircle(
-                                userLocation, quakeLatLng, 100),
-                            strokeWidth: 2.5,
-                            color: Colors.tealAccent,
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
