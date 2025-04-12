@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:client/services/socket_provider.dart';
 import 'package:client/services/country_polygon_loader.dart';
 import '../../models/earthquake.dart';
 import 'pulsating_marker.dart';
 import 'dart:math';
 import 'package:turf/turf.dart' as turf;
+import 'settings_popup.dart';
+import 'country_popup.dart';
+import '../screens/country_detail_screen.dart';
+import 'earthquake_popup.dart';
 
 class MapScreen extends StatefulWidget {
   final MapController mapController;
@@ -26,6 +31,8 @@ class _MapScreenState extends State<MapScreen> {
   Earthquake? _selectedEarthquake;
   Offset? _tapPosition;
 
+  LatLng? _userLocation; // 🧭 User location
+
   String? _selectedCountryLabel;
 
   double minMagnitude = 0.0;
@@ -39,6 +46,18 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadPolygons();
+    _loadUserLocation(); // 🧭 load location
+  }
+
+  Future<void> _loadUserLocation() async {
+    final permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) return;
+
+    final position = await Geolocator.getCurrentPosition();
+    setState(() {
+      _userLocation = LatLng(position.latitude, position.longitude);
+    });
   }
 
   Future<void> _loadPolygons() async {
@@ -90,20 +109,22 @@ class _MapScreenState extends State<MapScreen> {
               minZoom: 2.0,
               maxBounds: LatLngBounds(LatLng(-85, -200), LatLng(85, 200)),
               onTap: (tapPosition, latlng) {
-                print(
-                    '🛰️ Map tapped at: ${latlng.latitude}, ${latlng.longitude}');
                 bool found = false;
 
                 for (final polygon in _countryPolygons) {
                   if (!_isLatLngWithinBounds(latlng, polygon.points)) continue;
 
-                  print('🧭 Tap is within bounds of: ${polygon.label}');
-
                   if (_pointInPolygonGeo(latlng, polygon.points)) {
-                    print('✅ Inside country: ${polygon.label}');
                     if (polygon.label != _selectedCountryLabel) {
                       setState(() {
                         _selectedCountryLabel = polygon.label;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CountryDetailScreen(
+                                countryName: '${polygon.label}'),
+                          ),
+                        );
                       });
                       _loadPolygons();
                     }
@@ -144,8 +165,8 @@ class _MapScreenState extends State<MapScreen> {
               ),
               child: IconButton(
                 padding: EdgeInsets.zero,
-                icon: Icon(Icons.settings, color: Colors.white),
-                onPressed: () => _showSettingsPopup(context),
+                icon: const Icon(Icons.settings, color: Colors.white),
+                onPressed: () => showSettingsPopup(context),
               ),
             ),
           ),
@@ -184,7 +205,27 @@ class _MapScreenState extends State<MapScreen> {
         point: LatLng(quake.data.properties.lat, quake.data.properties.lon),
         width: 100.0,
         height: 100.0,
-        builder: (ctx) => PulsatingMarker(magnitude: quake.data.properties.mag),
+        builder: (ctx) => GestureDetector(
+          onTap: () {
+            if (_userLocation != null) {
+              showDialog(
+                context: context,
+                builder: (_) => EarthquakeDetailPopup(
+                  earthquake: quake,
+                  userLocation: _userLocation!,
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("User location not available")),
+              );
+            }
+          },
+          child: PulsatingMarker(
+            magnitude: quake.data.properties.mag,
+            animate: true,
+          ),
+        ),
       );
       _markers[quake.data.id] = marker;
     }
@@ -209,101 +250,9 @@ class _MapScreenState extends State<MapScreen> {
   bool _pointInPolygonGeo(LatLng point, List<LatLng> polygonPoints) {
     final turfPoint =
         turf.Point(coordinates: turf.Position(point.longitude, point.latitude));
-
-    final turfPolygon = turf.Polygon(
-      coordinates: [
-        polygonPoints
-            .map((p) => turf.Position(p.longitude, p.latitude))
-            .toList()
-      ],
-    );
-
+    final turfPolygon = turf.Polygon(coordinates: [
+      polygonPoints.map((p) => turf.Position(p.longitude, p.latitude)).toList()
+    ]);
     return turf.booleanContains(turfPolygon, turfPoint);
-  }
-
-  void _showSettingsPopup(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierColor: Colors.transparent,
-      builder: (context) {
-        return Stack(
-          children: [
-            Positioned(
-              top: 80,
-              right: 12,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[900],
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 12,
-                        offset: Offset(0, 6),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween),
-                      const SizedBox(height: 12),
-                      const Divider(color: Colors.grey),
-                      SwitchListTile(
-                        value: true,
-                        onChanged: (val) {},
-                        activeColor: Colors.tealAccent,
-                        title: const Text("Earthquake Monitor",
-                            style: TextStyle(color: Colors.white)),
-                        subtitle: const Text(
-                          "Tracking earthquakes in near real-time",
-                          style:
-                              TextStyle(color: Colors.tealAccent, fontSize: 12),
-                        ),
-                      ),
-                      const Divider(color: Colors.grey),
-                      ListTile(
-                        title: const Text("Language",
-                            style: TextStyle(color: Colors.white)),
-                        trailing: const Text("English",
-                            style: TextStyle(color: Colors.white70)),
-                      ),
-                      ListTile(
-                        title: const Text("Change theme",
-                            style: TextStyle(color: Colors.white)),
-                        trailing: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.wb_sunny, color: Colors.white),
-                            SizedBox(width: 8),
-                            Icon(Icons.dark_mode, color: Colors.white),
-                          ],
-                        ),
-                      ),
-                      ListTile(
-                        title: const Text("Color blind mode",
-                            style: TextStyle(color: Colors.white)),
-                        trailing: Switch(value: false, onChanged: (_) {}),
-                      ),
-                      const Divider(color: Colors.grey),
-                      const ListTile(
-                        title: Text("About Earthquake App",
-                            style: TextStyle(color: Colors.white)),
-                        trailing: Icon(Icons.expand_more, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 }

@@ -6,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 class CountryPolygonLoader {
   static Future<List<Polygon>> loadPolygons({
-    String assetPath = 'assets/geo/country_polygons_geo.json',
+    String assetPath = 'assets/geo/custom_geo.json',
   }) async {
     final String geojsonStr = await rootBundle.loadString(assetPath);
     final Map<String, dynamic> geojson = json.decode(geojsonStr);
@@ -29,7 +29,7 @@ class CountryPolygonLoader {
             points: points,
             label: label,
             color: Colors.red.withOpacity(0.2),
-            borderColor: Colors.red.withAlpha(0), // 0 to 255
+            borderColor: Colors.red.withAlpha(50), // 0 to 255
 
             borderStrokeWidth: 1.0,
           ));
@@ -48,7 +48,7 @@ class CountryPolygonLoader {
               points: points,
               label: label,
               color: Colors.red.withOpacity(0.2),
-              borderColor: Colors.red.withAlpha(0),
+              borderColor: Colors.red.withAlpha(50),
               borderStrokeWidth: 1.0,
             ));
           }

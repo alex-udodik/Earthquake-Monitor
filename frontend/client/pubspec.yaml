@@ -31,29 +31,37 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.0.2
-  flutter_map: ^5.0.0
-  latlong2: ^0.9.0
+  
   provider: ^6.1.2
   fl_chart: ^0.64.0
   audioplayers: 5.2.1
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   stomp_dart_client: ^1.0.0
+
   web_socket_channel: ^2.1.0
   cupertino_icons: ^1.0.2
+
   http: ^1.0.0
   json_serializable: ^6.7.1
+
   google_maps_flutter: ^2.5.0
   google_maps_flutter_web: ^0.5.4+2
 
   turf: ^0.0.10
   geocoding: ^3.0.0
-  intl: ^0.19.0
-  timeago: ^3.7.0
+  geolocator: ^10.1.0
+  latlong2: ^0.9.0
+
+  flutter_map: ^5.0.0
+  flutter_map_geojson: ^1.0.3
+  flutter_map_arc: ^1.0.0
   webview_flutter: ^4.7.0
   webview_flutter_wkwebview: 3.17.0
-
-  flutter_map_geojson: ^1.0.3
+  
+  intl: ^0.19.0
+  timeago: ^3.7.0
+  
 
 dev_dependencies:
   flutter_test:
