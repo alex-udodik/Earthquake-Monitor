@@ -20,6 +20,7 @@ doc/api/
 # dotenv environment variables file
 .env*
 
+earthquake_data/
 # Avoid committing generated Javascript files:
 *.dart.js
 *.info.json      # Produced by the --dump-info flag.

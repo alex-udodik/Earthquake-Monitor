@@ -25,32 +25,51 @@ const timeRanges = [
 ];
 
 async function fetchBatch(start, end, batchNum) {
-    const params = {
-        format: "geojson",
-        starttime: start,
-        endtime: end,
-        limit: LIMIT,
-        offset: 1,
-        orderby: ORDER_BY
-    };
+    let offset = 1;
+    let page = 1;
+    let totalSaved = 0;
 
-    console.log(`📡 Fetching ${start} → ${end}...`);
-    try {
-        const { data } = await axios.get(BASE_URL, { params });
+    while (true) {
+        const params = {
+            format: "geojson",
+            starttime: start,
+            endtime: end,
+            limit: LIMIT,
+            offset,
+            orderby: ORDER_BY
+        };
 
-        if (!data?.features?.length) {
-            console.log(`⚠️ No data in this window (${start} → ${end})`);
-            return false;
+        console.log(`📡 Fetching ${start} → ${end} | page ${page} (offset=${offset})...`);
+
+        try {
+            const { data } = await axios.get(BASE_URL, { params });
+
+            if (!data?.features?.length) {
+                console.log("⚠️ No more results in this range.");
+                break;
+            }
+
+            const filename = path.join(OUTPUT_DIR, `earthquakes_batch_${batchNum}_page_${page}.json`);
+            await fs.writeJson(filename, data, { spaces: 2 });
+            console.log(`✅ Saved ${filename} (${data.features.length} events)`);
+
+            totalSaved += data.features.length;
+
+            if (data.features.length < LIMIT) {
+                break; // Last page
+            }
+
+            offset += LIMIT;
+            page++;
+            await new Promise(res => setTimeout(res, 1500)); // polite delay
+        } catch (err) {
+            console.error(`❌ Error for ${start} → ${end}, page ${page}:`, err.message);
+            break;
         }
-
-        const filename = path.join(OUTPUT_DIR, `earthquakes_batch_${batchNum}.json`);
-        await fs.writeJson(filename, data, { spaces: 2 });
-        console.log(`✅ Saved ${filename} (${data.features.length} events)`);
-        return true;
-    } catch (err) {
-        console.error(`❌ Error for ${start} → ${end}:`, err.message);
-        return false;
     }
+
+    console.log(`📦 Total saved for ${start} → ${end}: ${totalSaved} events\n`);
+    return totalSaved > 0;
 }
 
 async function run() {
@@ -60,7 +79,7 @@ async function run() {
     for (const range of timeRanges) {
         const success = await fetchBatch(range.start, range.end, batchNum);
         if (success) batchNum++;
-        await new Promise(res => setTimeout(res, 1500)); // polite delay
+        await new Promise(res => setTimeout(res, 2000)); // delay between decades
     }
 
     console.log("🎉 Done fetching historical earthquake data.");
