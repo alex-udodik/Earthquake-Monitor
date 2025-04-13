@@ -61,7 +61,7 @@ async function fetchBatch(start, end, batchNum) {
 
             offset += LIMIT;
             page++;
-            await new Promise(res => setTimeout(res, 1500)); // polite delay
+            await new Promise(res => setTimeout(res, 10000)); // polite delay
         } catch (err) {
             console.error(`❌ Error for ${start} → ${end}, page ${page}:`, err.message);
             break;
