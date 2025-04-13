@@ -31,6 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.0.2
+  flutter_svg: ^2.0.7
   
   provider: ^6.1.2
   fl_chart: ^0.64.0
@@ -55,7 +56,7 @@ dependencies:
 
   flutter_map: ^5.0.0
   flutter_map_geojson: ^1.0.3
-  flutter_map_arc: ^1.0.0
+  flutter_map_marker_cluster: ^1.0.1
   webview_flutter: ^4.7.0
   webview_flutter_wkwebview: 3.17.0
   
@@ -88,8 +89,9 @@ flutter:
 
   assets:
     - .env
-    - assets/geo/country_polygons_geo.json
-    - assets/geo/custom_geo.json
+    - assets/geo/country_polygons_geo_high.json
+    - assets/geo/country_polygons_geo_low.json
+    - assets/flags/
     - assets/.env
     - assets/sounds/earthquake_alert.wav
   # To add assets to your application, add an assets section, like this:

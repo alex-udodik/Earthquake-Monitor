@@ -10,9 +10,9 @@ import 'pulsating_marker.dart';
 import 'dart:math';
 import 'package:turf/turf.dart' as turf;
 import 'settings_popup.dart';
-import 'country_popup.dart';
 import '../screens/country_detail_screen.dart';
 import 'earthquake_popup.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 
 class MapScreen extends StatefulWidget {
   final MapController mapController;
@@ -27,7 +27,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final Map<String, Marker> _markers = {};
-  List<Polygon> _countryPolygons = [];
+  List<LabeledPolygon> _countryPolygons = [];
   Earthquake? _selectedEarthquake;
   Offset? _tapPosition;
 
@@ -68,9 +68,10 @@ class _MapScreenState extends State<MapScreen> {
       _countryPolygons = rawPolygons.map((polygon) {
         final isSelected = polygon.label == highlightedLabel;
 
-        return Polygon(
+        return LabeledPolygon(
           points: polygon.points,
-          label: polygon.label,
+          label: '${polygon.label}',
+          countryCode: '${polygon.countryCode}',
           color:
               isSelected ? Colors.tealAccent.withOpacity(0.2) : polygon.color,
           borderColor: isSelected ? Colors.tealAccent : polygon.borderColor,
@@ -122,7 +123,9 @@ class _MapScreenState extends State<MapScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => CountryDetailScreen(
-                                countryName: '${polygon.label}'),
+                              countryName: '${polygon.label}',
+                              countryCode: '${polygon.countryCode}',
+                            ),
                           ),
                         );
                       });
