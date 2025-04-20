@@ -21,6 +21,7 @@ doc/api/
 .env*
 
 earthquake_data/
+seismicportal_data/
 # Avoid committing generated Javascript files:
 *.dart.js
 *.info.json      # Produced by the --dump-info flag.

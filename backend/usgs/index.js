@@ -7,27 +7,30 @@ const LIMIT = 20000;
 const OUTPUT_DIR = path.join(__dirname, "earthquake_data");
 const ORDER_BY = "time-asc";
 
-// Split into decade ranges to avoid 503s
-const timeRanges = [
-    { start: "1900-01-01", end: "1910-01-01" },
-    { start: "1910-01-01", end: "1920-01-01" },
-    { start: "1920-01-01", end: "1930-01-01" },
-    { start: "1930-01-01", end: "1940-01-01" },
-    { start: "1940-01-01", end: "1950-01-01" },
-    { start: "1950-01-01", end: "1960-01-01" },
-    { start: "1960-01-01", end: "1970-01-01" },
-    { start: "1970-01-01", end: "1980-01-01" },
-    { start: "1980-01-01", end: "1990-01-01" },
-    { start: "1990-01-01", end: "2000-01-01" },
-    { start: "2000-01-01", end: "2010-01-01" },
-    { start: "2010-01-01", end: "2020-01-01" },
-    { start: "2020-01-01", end: "2024-12-31" }
-];
+// 📆 Generate 3-month time ranges from yearStart to yearEnd
+function generateQuarterRanges(yearStart, yearEnd) {
+    const ranges = [];
+    for (let year = yearStart; year <= yearEnd; year++) {
+        ranges.push({ start: `${year}-01-01`, end: `${year}-04-01` });
+        ranges.push({ start: `${year}-04-01`, end: `${year}-07-01` });
+        ranges.push({ start: `${year}-07-01`, end: `${year}-10-01` });
+        ranges.push({ start: `${year}-10-01`, end: `${year + 1}-01-01` });
+    }
+    return ranges;
+}
+
+const timeRanges = generateQuarterRanges(2025, 2026); // ← adjust year range here
+
+function delay(ms) {
+    return new Promise((res) => setTimeout(res, ms));
+}
 
 async function fetchBatch(start, end, batchNum) {
     let offset = 1;
     let page = 1;
     let totalSaved = 0;
+    let retries = 0;
+    const MAX_RETRIES = 5;
 
     while (true) {
         const params = {
@@ -49,20 +52,31 @@ async function fetchBatch(start, end, batchNum) {
                 break;
             }
 
-            const filename = path.join(OUTPUT_DIR, `earthquakes_batch_${batchNum}_page_${page}.json`);
+            const filename = path.join(
+                OUTPUT_DIR,
+                `earthquakes_batch_${batchNum}_page_${page}.json`
+            );
             await fs.writeJson(filename, data, { spaces: 2 });
             console.log(`✅ Saved ${filename} (${data.features.length} events)`);
 
             totalSaved += data.features.length;
+            retries = 0;
 
-            if (data.features.length < LIMIT) {
-                break; // Last page
-            }
+            if (data.features.length < LIMIT) break;
 
             offset += LIMIT;
             page++;
-            await new Promise(res => setTimeout(res, 10000)); // polite delay
+            await delay(1000); // between pages
         } catch (err) {
+            const status = err.response?.status;
+            if ((status === 503 || status === 504) && retries < MAX_RETRIES) {
+                retries++;
+                const wait = 10000 * retries;
+                console.warn(`⚠️ ${status} received. Retrying in ${wait / 1000}s...`);
+                await delay(wait);
+                continue;
+            }
+
             console.error(`❌ Error for ${start} → ${end}, page ${page}:`, err.message);
             break;
         }
@@ -79,10 +93,10 @@ async function run() {
     for (const range of timeRanges) {
         const success = await fetchBatch(range.start, range.end, batchNum);
         if (success) batchNum++;
-        await new Promise(res => setTimeout(res, 2000)); // delay between decades
+        await delay(1000); // wait between chunks
     }
 
-    console.log("🎉 Done fetching historical earthquake data.");
+    console.log("🎉 All quarterly chunks fetched.");
 }
 
 run();

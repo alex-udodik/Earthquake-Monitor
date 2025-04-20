@@ -13,17 +13,23 @@ def lambda_handler(event, context):
     try:
         summary = json.loads(event['body'])
 
+        # Build a flat dictionary of key-value pairs
+        kv_pairs = {}
         for country in summary:
             code = country.get("country_code")
             if code:
                 key = f"country_summary_{code.lower()}"
-                r.set(key, json.dumps(country))
+                kv_pairs[key] = json.dumps(country)
+
+        # Use MSET to set all key-value pairs at once
+        if kv_pairs:
+            r.mset(kv_pairs)
 
         return {
             "statusCode": 200,
             "body": json.dumps({
                 "message": "Per-country cache updated",
-                "count": len(summary)
+                "count": len(kv_pairs)
             })
         }
 
