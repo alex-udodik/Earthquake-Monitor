@@ -20,6 +20,12 @@ doc/api/
 # dotenv environment variables file
 .env*
 
+backend/usgs/cleaned_jsonl/
+backend/usgs/earthquake_data/
+backend/usgs/seismicportal_data/
+backend/usgs/seismic.json
+backend/usgs/usgs.json
+
 # Avoid committing generated Javascript files:
 *.dart.js
 *.info.json      # Produced by the --dump-info flag.

@@ -1,78 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+
 import '../map/map.dart';
-import 'cardlist.dart';
 import 'chart_card.dart';
+import 'mobile_bottom_nav.dart';
+import 'scroll_sheet.dart';
 
 class EarthquakeDashboard extends StatefulWidget {
   @override
   _EarthquakeDashboardState createState() => _EarthquakeDashboardState();
 }
 
-class _EarthquakeDashboardState extends State<EarthquakeDashboard>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _EarthquakeDashboardState extends State<EarthquakeDashboard> {
   final MapController _mapController = MapController();
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
+  int _selectedIndex = 0;
 
   void _moveCameraTo(LatLng position) {
     _mapController.move(position, 8.0);
   }
 
+  bool isMobileLayout(BuildContext context) =>
+      MediaQuery.of(context).size.width < 600;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          // Tab Bar at the top (replacing AppBar)
-          Container(
-            color:
-                Color.fromARGB(48, 48, 48, 0), // Background color for the tabs
-            child: TabBar(
-              controller: _tabController,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Colors.blue,
-              tabs: [
-                Tab(icon: Icon(Icons.public), text: "Live View"),
-                Tab(icon: Icon(Icons.history), text: "History View"),
-              ],
-            ),
-          ),
+    final isMobile = isMobileLayout(context);
 
-          // Expanded TabBarView (Main Content)
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildMapScreen(isLive: true), // Live View
-                _buildMapScreen(isLive: false), // History View
-              ],
-            ),
-          ),
-        ],
-      ),
+    return Scaffold(
+      body: _buildLiveView(isMobile),
+      /*bottomNavigationBar: isMobile
+          ? MobileBottomNav(
+              currentIndex: _selectedIndex,
+              onTap: (index) => setState(() => _selectedIndex = index),
+            )
+          : null,
+      */
     );
   }
 
-  Widget _buildMapScreen({required bool isLive}) {
+  Widget _buildLiveView(bool isMobile) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        bool isWideScreen = constraints.maxWidth > 600;
+        final isWideScreen = constraints.maxWidth > 600;
 
-        if (isWideScreen) {
+        if (isWideScreen && !isMobile) {
           return Column(
             children: [
               Expanded(
                 child: Row(
                   children: [
-                    // Map takes up full available space
                     Expanded(
                       flex: 4,
                       child: Container(
@@ -83,16 +60,13 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: Center(
-                            child: MapScreen(
-                              mapController: _mapController,
-                              isLive: isLive,
-                            ),
+                          child: MapScreen(
+                            mapController: _mapController,
+                            isLive: true,
                           ),
                         ),
                       ),
                     ),
-                    // Card List takes up full available space
                     Expanded(
                       flex: 1,
                       child: Container(
@@ -101,7 +75,7 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
                           color: const Color.fromARGB(38, 38, 38, 1),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: EarthquakeCardList(
+                        child: EarthquakeScrollSheet(
                           onCardTap: _moveCameraTo,
                         ),
                       ),
@@ -109,25 +83,20 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
                   ],
                 ),
               ),
-
-              // Only show additional widgets in History View
-              if (!isLive) _buildAdditionalWidgets(),
             ],
           );
         } else {
-          return Column(
+          return Stack(
             children: [
-              Expanded(
-                child: MapScreen(mapController: _mapController, isLive: isLive),
-              ),
-              Expanded(
-                child: EarthquakeCardList(
-                  onCardTap: _moveCameraTo,
+              Positioned.fill(
+                child: MapScreen(
+                  mapController: _mapController,
+                  isLive: true,
                 ),
               ),
-
-              // Only show additional widgets in History View
-              if (!isLive) _buildAdditionalWidgets(),
+              EarthquakeScrollSheet(
+                onCardTap: _moveCameraTo,
+              ),
             ],
           );
         }
@@ -135,34 +104,36 @@ class _EarthquakeDashboardState extends State<EarthquakeDashboard>
     );
   }
 
-  Widget _buildAdditionalWidgets() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 20),
-        SizedBox(
-          height: 300,
-          child: ChartCard(title: "dist"),
-        ),
-        SizedBox(height: 20),
-        Text(
-          'Additional Data or Widgets',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 10),
-        Container(
-          margin: EdgeInsets.all(8),
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.blueGrey[700],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            'This section can display graphs, stats, or other widgets.',
-            style: TextStyle(fontSize: 16),
-          ),
-        ),
-      ],
+/*
+  Widget _buildBody(int index, bool isMobile) {
+    switch (index) {
+      case 0:
+        return _buildLiveView(isMobile);
+      case 1:
+        return _buildHistoryView();
+      case 2:
+        return _buildSettingsView();
+      default:
+        return _buildLiveView(isMobile);
+    }
+  }
+  
+  Widget _buildHistoryView() {
+    return Center(
+      child: Text(
+        'History (Coming Soon)',
+        style: TextStyle(fontSize: 20),
+      ),
     );
   }
+
+  Widget _buildSettingsView() {
+    return Center(
+      child: Text(
+        'Settings',
+        style: TextStyle(fontSize: 20),
+      ),
+    );
+  }
+  */
 }
