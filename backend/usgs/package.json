@@ -11,6 +11,9 @@
   "description": "",
   "dependencies": {
     "axios": "^1.8.4",
-    "fs-extra": "^11.3.0"
+    "fs-extra": "^11.3.0",
+    "mongodb": "^6.15.0",
+    "stream-chain": "^3.4.0",
+    "stream-json": "^1.9.1"
   }
 }
