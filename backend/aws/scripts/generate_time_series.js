@@ -168,4 +168,4 @@ async function generateSnapshot(db, unit, start, end) {
     } finally {
         await client.close();
     }
-})();
+})();//

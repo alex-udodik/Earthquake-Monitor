@@ -361,7 +361,7 @@ class _CountryDetailScreenState extends State<CountryDetailScreen> {
     final yMin = 0.0;
     final yMax = yValues.isEmpty ? 1 : yValues.reduce((a, b) => a > b ? a : b);
     final yInterval = safeInterval(yMin, yMax.toDouble(), 4);
-
+//
     return BarChart(
       BarChartData(
         maxY: yMax + yInterval, // slight padding
