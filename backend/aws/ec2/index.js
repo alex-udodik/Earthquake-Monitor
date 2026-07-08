@@ -18,7 +18,12 @@ const redisClient = new Redis(process.env.UPSTASH_REDIS_URL, {
         // (and the error log) every couple seconds.
         return Math.min(times * 1000, 30000);
     },
-    keepAlive: 10000,
+    // ECONNRESET against cloud Redis providers is commonly IPv6 routing
+    // flakiness; forcing IPv4 is Upstash/ioredis's standard mitigation.
+    family: 4,
+    // Don't fail in-flight commands during a brief reconnect window — let
+    // them wait and retry once the connection is back instead of throwing.
+    maxRetriesPerRequest: null,
 });
 
 // Upstash's serverless proxy routinely closes and re-establishes idle
