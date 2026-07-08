@@ -18,14 +18,23 @@ const redisClient = new Redis(process.env.UPSTASH_REDIS_URL, {
         // (and the error log) every couple seconds.
         return Math.min(times * 1000, 30000);
     },
+    keepAlive: 10000,
 });
 
-// Handle Redis events. Only log on state transitions (connected -> down,
-// down -> connected) rather than on every retry, so a sustained outage logs
-// once instead of spamming the console and MongoDB.
+// Upstash's serverless proxy routinely closes and re-establishes idle
+// connections without ever emitting 'error' — ioredis silently reconnects,
+// which is normal churn, not an outage. Only log the very first connection
+// and any reconnect that follows a real observed error, so routine churn
+// stays silent and only genuine outages show up in the console/MongoDB.
+let hasConnectedOnce = false;
 let redisIsDown = false;
 redisClient.on('connect', () => {
-    logWithTimestamp(redisIsDown ? '✅ Reconnected to Upstash Redis' : '✅ Connected to Upstash Redis');
+    if (!hasConnectedOnce) {
+        logWithTimestamp('✅ Connected to Upstash Redis');
+        hasConnectedOnce = true;
+    } else if (redisIsDown) {
+        logWithTimestamp('✅ Reconnected to Upstash Redis');
+    }
     redisIsDown = false;
 });
 redisClient.on('error', (err) => {
