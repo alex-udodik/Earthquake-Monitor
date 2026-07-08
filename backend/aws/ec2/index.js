@@ -12,11 +12,27 @@ const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
 // Initialize Upstash Redis
-const redisClient = new Redis(process.env.UPSTASH_REDIS_URL);
+const redisClient = new Redis(process.env.UPSTASH_REDIS_URL, {
+    retryStrategy(times) {
+        // Cap backoff at 30s so a sustained outage doesn't hammer reconnects
+        // (and the error log) every couple seconds.
+        return Math.min(times * 1000, 30000);
+    },
+});
 
-// Handle Redis events
-redisClient.on('connect', () => logWithTimestamp('✅ Connected to Upstash Redis'));
-redisClient.on('error', (err) => logWithTimestamp(`❌ Redis error: ${err}`, true));
+// Handle Redis events. Only log on state transitions (connected -> down,
+// down -> connected) rather than on every retry, so a sustained outage logs
+// once instead of spamming the console and MongoDB.
+let redisIsDown = false;
+redisClient.on('connect', () => {
+    logWithTimestamp(redisIsDown ? '✅ Reconnected to Upstash Redis' : '✅ Connected to Upstash Redis');
+    redisIsDown = false;
+});
+redisClient.on('error', (err) => {
+    if (redisIsDown) return;
+    redisIsDown = true;
+    logWithTimestamp(`❌ Redis error: ${err}`, true);
+});
 
 let sourceSock;
 let destinationSock;
@@ -225,6 +241,7 @@ async function setKeyValueRedis(key, val) {
     try {
         const mongodb = MongodbSingleton.getInstance();
         await mongodb.connect();
+        await mongoUtil.ensureLogsTtlIndex();
         // Load last 100 and last 1000 earthquakes from MongoDB
         const last100Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 100);
         const last1000Earthquakes = await mongoUtil.getLastXDocuments("EarthquakesData", "Earthquake", 1000);

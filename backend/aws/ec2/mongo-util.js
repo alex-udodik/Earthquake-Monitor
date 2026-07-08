@@ -25,6 +25,17 @@ module.exports = {
     getCollection: function (database, collection) {
         const databaseInstance = MongoDBSingleton.getInstance();
         return databaseInstance.db(database).collection(collection);
+    },
+
+    // Error logs have no natural expiry; without this the collection grows
+    // unbounded and can exhaust an Atlas free-tier (M0) storage cap.
+    ensureLogsTtlIndex: async function (expireAfterSeconds = 14 * 24 * 60 * 60) {
+        try {
+            const mongodbCollection = this.getCollection("SeismicPortalWebSocket", "Logs");
+            await mongodbCollection.createIndex({ timestamp: 1 }, { expireAfterSeconds });
+        } catch (error) {
+            console.log(`❌ MongoDB TTL index error: ${error.message}`);
+        }
     }
 }
 
