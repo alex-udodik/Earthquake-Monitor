@@ -4,53 +4,21 @@ const MongodbSingleton = require('./mongob-singleton');
 const mongoUtil = require('./mongo-util');
 const dotenv = require('dotenv').config();
 const EarthquakesList = require('./earthquakes-list');
-const Redis = require("ioredis");
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
 const reconnectInterval = 2000; // 2 seconds delay before reconnecting
 const sourceUrl = 'https://www.seismicportal.eu/standing_order';
 const destinationUrl = process.env.AWS_API_GATEWAY_WEBSOCKET;
 
-// Initialize Upstash Redis
-const redisClient = new Redis(process.env.UPSTASH_REDIS_URL, {
-    retryStrategy(times) {
-        // Cap backoff at 30s so a sustained outage doesn't hammer reconnects
-        // (and the error log) every couple seconds.
-        return Math.min(times * 1000, 30000);
-    },
-    // ECONNRESET against cloud Redis providers is commonly IPv6 routing
-    // flakiness; forcing IPv4 is Upstash/ioredis's standard mitigation.
-    family: 4,
-    // maxRetriesPerRequest: null (queue forever, never fail) silently hung
-    // every SET on this connection instead of fixing it -- confirmed via
-    // Upstash's /info showing total_writes_processed stuck at 0 even after
-    // a live earthquake was received and "inserted". Use the default retry
-    // cap plus a hard per-command timeout so a stuck command errors loudly
-    // (and gets logged) instead of hanging the event handler forever.
-    commandTimeout: 5000,
-});
-
-// Upstash's serverless proxy routinely closes and re-establishes idle
-// connections without ever emitting 'error' — ioredis silently reconnects,
-// which is normal churn, not an outage. Only log the very first connection
-// and any reconnect that follows a real observed error, so routine churn
-// stays silent and only genuine outages show up in the console/MongoDB.
-let hasConnectedOnce = false;
-let redisIsDown = false;
-redisClient.on('connect', () => {
-    if (!hasConnectedOnce) {
-        logWithTimestamp('✅ Connected to Upstash Redis');
-        hasConnectedOnce = true;
-    } else if (redisIsDown) {
-        logWithTimestamp('✅ Reconnected to Upstash Redis');
-    }
-    redisIsDown = false;
-});
-redisClient.on('error', (err) => {
-    if (redisIsDown) return;
-    redisIsDown = true;
-    logWithTimestamp(`❌ Redis error: ${err}`, true);
-});
+// Writes go through Upstash's REST API rather than a raw ioredis TCP
+// connection. On this relay's network path, the raw protocol's SET calls
+// consistently timed out (5s, every time) even though the connection itself
+// looked healthy -- consistent with a large-payload MTU/fragmentation
+// blackhole, since tiny commands worked fine. Verified the REST endpoint
+// handles the real ~50-60KB payload reliably (~300ms) against this same
+// database, so it sidesteps the raw-protocol issue entirely.
+const UPSTASH_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 let sourceSock;
 let destinationSock;
@@ -244,10 +212,15 @@ function connectDestination() {
     });
 }
 
-// Store key-value pair in Upstash Redis
+// Store key-value pair in Upstash Redis via the REST API
 async function setKeyValueRedis(key, val) {
     try {
-        await redisClient.set(key, val);
+        const response = await fetch(`${UPSTASH_REST_URL}/set/${encodeURIComponent(key)}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${UPSTASH_REST_TOKEN}` },
+            body: val,
+        });
+        if (!response.ok) throw new Error(`Upstash REST error: ${response.status}`);
         logWithTimestamp(`✅ Key "${key}" set in Upstash Redis`);
     } catch (error) {
         logWithTimestamp(`❌ Upstash Redis set error: ${error}`, true);
