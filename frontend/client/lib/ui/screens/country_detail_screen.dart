@@ -39,7 +39,7 @@ class _CountryDetailScreenState extends State<CountryDetailScreen> {
 
   Future<void> fetchCountrySummary() async {
     final url = Uri.parse(
-        "https://selected-bull-34594.upstash.io/get/country_summary_${widget.countryCode.toLowerCase()}");
+        "${dotenv.env['UPSTASH_REST_URL']}/get/country_summary_${widget.countryCode.toLowerCase()}");
 
     final response = await http.get(url, headers: {
       "Authorization": "Bearer ${dotenv.env['UPSTASH_REST_TOKEN']}",
@@ -59,7 +59,7 @@ class _CountryDetailScreenState extends State<CountryDetailScreen> {
 
   Future<List<Map<String, dynamic>>> fetchTimeSeries(String interval) async {
     final key = "${widget.countryCode.toLowerCase()}_$interval";
-    final url = Uri.parse("https://selected-bull-34594.upstash.io/get/$key");
+    final url = Uri.parse("${dotenv.env['UPSTASH_REST_URL']}/get/$key");
 
     final response = await http.get(url, headers: {
       "Authorization": "Bearer ${dotenv.env['UPSTASH_REST_TOKEN']}",

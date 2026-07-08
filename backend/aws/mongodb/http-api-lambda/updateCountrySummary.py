@@ -1,19 +1,27 @@
-import redis
 import json
 import os
+import urllib.request
+import urllib.parse
 
-r = redis.Redis(
-    host='selected-bull-34594.upstash.io',
-    port=6379,
-    password=os.environ['UPSTASH_REDIS_PASS'],
-    ssl=True
-)
+UPSTASH_REST_URL = os.environ["UPSTASH_REDIS_REST_URL"]
+UPSTASH_REST_TOKEN = os.environ["UPSTASH_REDIS_REST_TOKEN"]
+
+
+def upstash_set(key, value):
+    req = urllib.request.Request(
+        f"{UPSTASH_REST_URL}/set/{urllib.parse.quote(key)}",
+        data=value.encode("utf-8"),
+        headers={"Authorization": f"Bearer {UPSTASH_REST_TOKEN}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        return json.loads(resp.read())
+
 
 def lambda_handler(event, context):
     try:
         summary = json.loads(event['body'])
 
-        # Build a flat dictionary of key-value pairs
         kv_pairs = {}
         for country in summary:
             code = country.get("country_code")
@@ -21,9 +29,8 @@ def lambda_handler(event, context):
                 key = f"country_summary_{code.lower()}"
                 kv_pairs[key] = json.dumps(country)
 
-        # Use MSET to set all key-value pairs at once
-        if kv_pairs:
-            r.mset(kv_pairs)
+        for key, value in kv_pairs.items():
+            upstash_set(key, value)
 
         return {
             "statusCode": 200,

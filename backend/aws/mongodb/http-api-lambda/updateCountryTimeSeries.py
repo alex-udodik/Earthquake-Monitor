@@ -1,13 +1,32 @@
-import redis
 import json
 import os
+import urllib.request
+import urllib.parse
 
-r = redis.Redis(
-    host='selected-bull-34594.upstash.io',
-    port=6379,
-    password=os.environ['UPSTASH_REDIS_PASS'],
-    ssl=True
-)
+UPSTASH_REST_URL = os.environ["UPSTASH_REDIS_REST_URL"]
+UPSTASH_REST_TOKEN = os.environ["UPSTASH_REDIS_REST_TOKEN"]
+
+
+def upstash_get(key):
+    req = urllib.request.Request(
+        f"{UPSTASH_REST_URL}/get/{urllib.parse.quote(key)}",
+        headers={"Authorization": f"Bearer {UPSTASH_REST_TOKEN}"},
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        body = json.loads(resp.read())
+    return body.get("result")
+
+
+def upstash_set(key, value):
+    req = urllib.request.Request(
+        f"{UPSTASH_REST_URL}/set/{urllib.parse.quote(key)}",
+        data=value.encode("utf-8"),
+        headers={"Authorization": f"Bearer {UPSTASH_REST_TOKEN}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        return json.loads(resp.read())
+
 
 def handler(event, context):
     try:
@@ -27,7 +46,7 @@ def handler(event, context):
 
             print(f"➡️  Processing doc for key: {key}")
 
-            existing_raw = r.get(key)
+            existing_raw = upstash_get(key)
             if existing_raw:
                 print(f"📡 Found existing key: {key}")
                 try:
@@ -42,7 +61,7 @@ def handler(event, context):
             existing_array.append(doc)
             existing_array.sort(key=lambda d: d.get("timestamp", ""), reverse=True)
 
-            r.set(key, json.dumps(existing_array))
+            upstash_set(key, json.dumps(existing_array))
             print(f"✅ Updated Redis key: {key} (Total items: {len(existing_array)})")
             count += 1
 
@@ -62,4 +81,3 @@ def handler(event, context):
             "statusCode": 500,
             "body": json.dumps({ "error": str(e) })
         }
-    #
