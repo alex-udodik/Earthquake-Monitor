@@ -6,8 +6,8 @@ const mongoUri = `mongodb+srv://${process.env.MONGOUSERNAME}:${process.env.MONGO
 const client = new MongoClient(mongoUri);
 
 const redis = new Redis({
-    url: 'https://selected-bull-34594.upstash.io',   // e.g., https://selected-bull-34594.upstash.io
-    token: process.env.UPSTASH_TOKEN
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN
 });
 
 const DB_NAME = "EarthquakesData";
