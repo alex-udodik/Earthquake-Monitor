@@ -2,8 +2,8 @@ import "server-only";
 import { CountrySummary, TimeSeriesPoint } from "@/lib/types";
 
 function config() {
-  const url = process.env.UPSTASH_REST_URL;
-  const token = process.env.UPSTASH_REST_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) throw new Error("Upstash not configured");
   return { url, token };
 }
